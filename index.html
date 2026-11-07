@@ -138,6 +138,20 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .month b{font-weight:700;min-width:120px;text-align:center}
 .banner{background:var(--warn-soft);border-radius:12px;padding:10px 14px;font-size:14px;border:1px solid var(--line)}
 .banner b{color:var(--warn)}
+.prow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.prow .inp{max-width:170px}
+.pq{font-weight:600}
+.pres{background:var(--surface-2);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.5}
+.pres .big{font-size:22px;font-weight:800}
+.pgood{color:var(--inc)}.pbad{color:var(--exp)}
+.ptab{width:100%;border-collapse:collapse;font-size:14px}
+.ptab th{font-weight:600;color:var(--muted);text-align:right;padding:6px 4px;border-bottom:1px solid var(--line)}
+.ptab td{padding:7px 4px;border-bottom:1px solid var(--line)}
+.ptab td.num,.ptab th.num{text-align:left}
+.ptab tr.cur td{font-weight:700}
+.pprog{height:8px;background:var(--line);border-radius:4px;overflow:hidden}.pprog span{display:block;height:100%;background:var(--inc)}
+.mixrow{display:flex;justify-content:space-between;font-size:13px;color:var(--muted)}
+input[type=range]{width:100%}
 .empty{color:var(--muted);text-align:center;padding:26px 8px}
 .pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 .pill.ok{background:var(--inc-soft);color:var(--inc);border-color:transparent}
@@ -301,6 +315,7 @@ td select{border:1px solid var(--line);background:var(--surface);border-radius:8
     <a href="#reports" data-p="reports"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>דוחות וניתוח</a>
     <a href="#bills" data-p="bills"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6M9 16h3"/></svg>חשבונות קבועים<span class="nbadge" id="billBadge" hidden></span></a>
     <a href="#budget" data-p="budget"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 4"/></svg>תקציב</a>
+    <a href="#plan" data-p="plan"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>תכנון וחיסכון</a>
     <a href="#insights" data-p="insights"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>תובנות וייעוץ</a>
     <div class="sep"></div>
     <a href="#" data-xlsx role="button"><svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13l4 5M13 13l-4 5"/></svg>ייצוא דוח לאקסל</a>
@@ -439,6 +454,33 @@ td select{border:1px solid var(--line);background:var(--surface);border-radius:8
     <div class="card"><div class="ch"><h2>לפי קטגוריה</h2><button class="btn ghost sm" type="button" id="budSuggest">הצעת תקציב לפי ממוצע 3 חודשים</button></div><div id="budList"></div></div>
   </section>
 
+  <!-- PLAN -->
+  <section class="page" id="p-plan" hidden>
+    <div class="phead"><div class="lead"><h1>תכנון וחיסכון</h1><p class="muted">כמה אפשר לחסוך, מה תקרת ההוצאות, ומה צריך כדי לשפר את המצב בחשבון.</p></div><div class="month" data-month></div></div>
+    <div class="kpis" id="planKpis"></div>
+    <div class="grid2" style="align-items:start">
+      <div class="card">
+        <h2>כמה אני רוצה לחסוך החודש?</h2>
+        <div class="prow"><label class="pq" for="goalAmt">יעד חיסכון</label><input class="inp num" id="goalAmt" inputmode="numeric" placeholder="₪ למשל 1,500"></div>
+        <div class="prow"><label class="pq" for="incAmt">הכנסה צפויה בחודש</label><input class="inp num" id="incAmt" inputmode="numeric" placeholder="₪"><small class="muted" id="incHint"></small></div>
+        <div class="pres" id="goalOut"></div>
+        <h3 style="margin:6px 0 0">ואם ההוצאות יסתכמו ב...</h3>
+        <div class="prow"><input class="inp num" id="whatIf" inputmode="numeric" placeholder="₪ סך הוצאות"><span id="whatIfOut" class="pq"></span></div>
+        <table class="ptab" id="ladder"></table>
+      </div>
+      <div class="card">
+        <h2>מצב בחשבון הבנק</h2>
+        <div class="prow"><label class="pq" for="bankAmt">יתרה נוכחית</label><input class="inp num" id="bankAmt" inputmode="decimal" placeholder="₪ (במינוס: עם סימן -)"><button class="btn sm" type="button" id="bankSave">עדכון</button></div>
+        <small class="muted" id="bankWhen"></small>
+        <div class="pres" id="bankOut"></div>
+        <h3 style="margin:6px 0 0">תוכנית לשיפור המצב</h3>
+        <div class="prow"><span class="pq">אני רוצה שבחשבון יהיו עוד</span><input class="inp num" id="tgtAmt" inputmode="numeric" placeholder="₪"><span class="pq">תוך</span><select class="inp" id="tgtMonths" style="max-width:120px"><option value="1">חודש</option><option value="2">חודשיים</option><option value="3" selected>3 חודשים</option><option value="6">חצי שנה</option><option value="12">שנה</option></select></div>
+        <div id="planOut"></div>
+      </div>
+    </div>
+    <div class="card" id="autoBud"></div>
+  </section>
+
   <!-- INSIGHTS -->
   <section class="page" id="p-insights" hidden>
     <div class="phead"><div class="lead"><h1>תובנות וייעוץ</h1><p class="muted">איפה אפשר לחסוך ואיך להגדיל הכנסה.</p></div><div class="month" data-month></div></div>
@@ -539,17 +581,17 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const normM=s=>String(s||'').toLowerCase().replace(/\d{3,}/g,'').replace(/[*"'׳״.,\-_/\\]+/g,' ').replace(/\s+/g,' ').trim();
 
 let fbUser=null;
-const S={tx:[],cats:JSON.parse(JSON.stringify(DEF_CATS)),budgets:{},rules:{},imports:[],bills:JSON.parse(JSON.stringify(DEF_BILLS)),paid:{},groups:DEF_GROUPS.slice(),whoMap:{...DEF_WHO},who:null,mode:'pending',page:'overview',month:mkey(today()),type:'expense',cat:null,editing:null};
+const S={tx:[],cats:JSON.parse(JSON.stringify(DEF_CATS)),budgets:{},rules:{},imports:[],bills:JSON.parse(JSON.stringify(DEF_BILLS)),paid:{},groups:DEF_GROUPS.slice(),whoMap:{...DEF_WHO},plan:{},who:null,mode:'pending',page:'overview',month:mkey(today()),type:'expense',cat:null,editing:null};
 let api=null;
 
 /* ================= storage ================= */
 const LS='kis-v1';
 const lsGet=()=>{try{return JSON.parse(localStorage.getItem(LS))||{}}catch(e){return{}}};
-const lsSet=()=>{try{localStorage.setItem(LS,JSON.stringify({tx:S.tx,cats:S.cats,budgets:S.budgets,rules:S.rules,imports:S.imports}))}catch(e){}};
+const lsSet=()=>{try{localStorage.setItem(LS,JSON.stringify({tx:S.tx,cats:S.cats,budgets:S.budgets,rules:S.rules,imports:S.imports,plan:S.plan}))}catch(e){}};
 const rid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-function settingsObj(){return{expense:S.cats.expense,income:S.cats.income,budgets:S.budgets,rules:S.rules,bills:S.bills,paid:S.paid,migr:S.migr||[],groups:S.groups,whoMap:S.whoMap}}
+function settingsObj(){return{expense:S.cats.expense,income:S.cats.income,budgets:S.budgets,rules:S.rules,bills:S.bills,paid:S.paid,migr:S.migr||[],groups:S.groups,whoMap:S.whoMap,plan:S.plan||{}}}
 function useLocal(){
-  S.mode='local';const d=lsGet();S.tx=d.tx||[];if(d.cats)S.cats=d.cats;S.budgets=d.budgets||{};S.rules=d.rules||{};S.imports=d.imports||[];
+  S.mode='local';const d=lsGet();S.tx=d.tx||[];if(d.cats)S.cats=d.cats;S.budgets=d.budgets||{};S.rules=d.rules||{};S.imports=d.imports||[];S.plan=d.plan||{};
   api={
     add:async t=>{S.tx.push({...t,id:rid('l')});lsSet();render()},
     addMany:async(list,onp)=>{list.forEach(t=>S.tx.push({...t,id:rid('l')}));lsSet();onp&&onp(list.length);render()},
@@ -575,7 +617,7 @@ async function connect(user){
   unsubs.push(col.onSnapshot(s=>{S.mode='cloud';S.tx=s.docs.map(d=>({...d.data(),id:d.id}));render()},e=>toast('לא הצלחתי לטעון את הנתונים: '+e.code)));
   unsubs.push(sdoc.onSnapshot(s=>{if(s.exists){const d=s.data()||{};{let ch=false;const mg=[...(d.migr||[])];/* one-time additions of new default categories */
   for(const [key,ty,cat,after] of [['sport','expense','ספורט וכושר','בריאות'],['tobacco','expense','סיגריות וטבק','ביטוחים'],['inc1','income','קצבת ילדים','עבודה עצמאית'],['inc2','income','מזונות','קצבת ילדים'],['inc3','income','העברות ממשפחה','מזונות'],['inc4','income','החזרי מס וזיכויים','העברות ממשפחה']]){if(!Array.isArray(d[ty])||mg.includes(key))continue;mg.push(key);ch=true;if(!d[ty].includes(cat)){const i=d[ty].indexOf(after);d[ty].splice(i>=0?i+1:Math.max(0,d[ty].length-1),0,cat)}}
-  if(ch){sdoc.set({...d,migr:mg}).catch(()=>{});return}}if(Array.isArray(d.expense)&&Array.isArray(d.income))S.cats={expense:d.expense,income:d.income};S.budgets=d.budgets||{};S.rules=d.rules||{};S.bills=Array.isArray(d.bills)?d.bills:JSON.parse(JSON.stringify(DEF_BILLS));S.paid=d.paid||{};S.migr=d.migr||[];S.groups=Array.isArray(d.groups)&&d.groups.length?d.groups:DEF_GROUPS.slice();S.whoMap=Object.assign({},DEF_WHO,d.whoMap||{});render()}},()=>{}));
+  if(ch){sdoc.set({...d,migr:mg}).catch(()=>{});return}}if(Array.isArray(d.expense)&&Array.isArray(d.income))S.cats={expense:d.expense,income:d.income};S.budgets=d.budgets||{};S.rules=d.rules||{};S.bills=Array.isArray(d.bills)?d.bills:JSON.parse(JSON.stringify(DEF_BILLS));S.paid=d.paid||{};S.migr=d.migr||[];S.groups=Array.isArray(d.groups)&&d.groups.length?d.groups:DEF_GROUPS.slice();S.whoMap=Object.assign({},DEF_WHO,d.whoMap||{});S.plan=d.plan&&typeof d.plan==='object'?d.plan:{};render()}},()=>{}));
   unsubs.push(icol.onSnapshot(s=>{S.imports=s.docs.map(d=>({...d.data(),id:d.id}));render()},()=>{}));
 }
 let unsubs=[];
@@ -654,7 +696,7 @@ root.querySelectorAll('.tx').forEach(b=>b.onclick=()=>{const t=list.find(x=>Stri
 const sortTx=l=>[...l].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
 
 /* ================= routing ================= */
-const PAGES={overview:'לוח בקרה',add:'הוספת תנועה',transactions:'תנועות',import:'ייבוא פירוט',reports:'דוחות וניתוח',bills:'חשבונות קבועים',budget:'תקציב',insights:'תובנות וייעוץ',prefs:'הגדרות'};
+const PAGES={overview:'לוח בקרה',add:'הוספת תנועה',transactions:'תנועות',import:'ייבוא פירוט',reports:'דוחות וניתוח',bills:'חשבונות קבועים',budget:'תקציב',plan:'תכנון וחיסכון',insights:'תובנות וייעוץ',prefs:'הגדרות'};
 let navDepth=0;window.addEventListener('hashchange',()=>{navDepth++});
 document.querySelectorAll('section.page').forEach(sec=>{if(sec.id==='p-overview')return;const lead=sec.querySelector('.phead .lead');if(!lead)return;
   const b=document.createElement('button');b.type='button';b.className='backbtn';b.setAttribute('aria-label','חזרה');
@@ -730,7 +772,7 @@ function renderOverview(){const all=data(),l=inMonth(all,S.month),prev=inMonth(a
   $('#ovInc').innerHTML=barsHTML(sumBy(l.filter(t=>t.type==='income'),'category'),'income',inc);
   const rec=sortTx(l).slice(0,6);$('#ovRecent').innerHTML=rec.length?rec.map(txRow).join(''):'<div class="empty">אין תנועות בחודש הזה</div>';bindRows($('#ovRecent'),rec);
   const bl=Object.entries(S.budgets).filter(([c,v])=>Number(v)>0).map(([c,v])=>({c,b:Number(v),s:total(l.filter(t=>t.category===c),'expense')})).sort((a,b)=>b.s/b.b-a.s/a.b);
-  $('#ovBud').innerHTML=bl.length?`<div class="bars">${bl.slice(0,6).map(budMini).join('')}</div>`:`<div class="empty">עוד לא הגדרת תקציב.<br><a href="#budget">הגדרת תקציב חודשי</a> תראה כאן כמה נשאר בכל קטגוריה.</div>`}
+  $('#ovBud').innerHTML=bl.length?`<div class="bars">${bl.slice(0,6).map(budMini).join('')}</div>`:(dataMonthsBefore(mkey(today())).length>=2?`<div class="empty">יש לי מספיק נתונים כדי להציע לך תקציב.<br><a href="#plan">לראות את ההצעה</a></div>`:`<div class="empty">עוד לא הגדרת תקציב.<br><a href="#budget">הגדרת תקציב חודשי</a> תראה כאן כמה נשאר בכל קטגוריה.</div>`)}
 function daysIn(k){const [y,m]=k.split('-').map(Number);const dim=new Date(y,m,0).getDate();return k===mkey(today())?new Date().getDate():dim}
 function budState(s,b){const r=s/b;return r>1?'bad':r>.85?'warn':'ok'}
 function budMini(x){const st=budState(x.s,x.b);const col=st==='bad'?'var(--exp)':st==='warn'?'var(--warn)':'var(--inc)';
@@ -1009,6 +1051,113 @@ $('#budSuggest').onclick=async()=>{const ks=[1,2,3].map(n=>addM(mkey(today()),-n
   for(const [c,v] of sumBy(l.filter(t=>t.type==='expense'),'category')){if(!S.budgets[c])S.budgets[c]=Math.max(50,Math.round(v/months*0.9/10)*10)}
   const a=await getApi();try{await a.saveSettings();toast('הוצע תקציב: 10% מתחת לממוצע. אפשר לשנות כל שורה')}catch(e){}render()};
 
+/* ================= plan & savings ================= */
+/* how much of each category can realistically be cut in a month */
+const CUT_CAP={'דיור':0,'חשבונות הבית':0.05,'ביטוחים':0.05,'עמלות ומסים':0.1,'ילדים וחינוך':0.05,'בריאות':0,'מזון וסופר':0.12,'תחבורה ודלק':0.15,'תקשורת ומנויים':0.2,'ספורט וכושר':0.2,'מסעדות ובילויים':0.4,'סיגריות וטבק':0.5,'ביגוד וטיפוח':0.4,'אונליין ושונות':0.4,'קניות לבית':0.35,'מתנות ואירועים':0.3};
+const cutCap=c=>c in CUT_CAP?CUT_CAP[c]:0.2;
+const r10=v=>Math.round(v/10)*10;
+function dataMonthsBefore(k){const s=new Set(S.tx.filter(t=>t.type==='expense'&&mkey(t.date)<k).map(t=>mkey(t.date)));return [...s].sort()}
+function planCtx(k){const all=data();const l=inMonth(all,k);const now=mkey(today());
+  const hist=(isDemo()?[1,2,3].map(n=>addM(k,-n)):dataMonthsBefore(k)).filter(m=>m>=addM(k,-6)).slice(-3);
+  const hl=inMonths(all,hist);const n=hist.length||1;
+  const avgExp=hist.length?total(hl,'expense')/n:0,avgInc=hist.length?total(hl,'income')/n:0;
+  const avgCat={};for(const [c,v] of sumBy(hl.filter(t=>t.type==='expense'),'category'))avgCat[c]=v/n;
+  const [y,m]=k.split('-').map(Number);const dim=new Date(y,m,0).getDate();
+  const isCur=k===now,isPast=k<now;const dayN=isCur?new Date().getDate():isPast?dim:0;
+  const expSoFar=total(l,'expense'),incSoFar=total(l,'income');
+  let fcExp;if(isPast)fcExp=expSoFar;else if(hist.length)fcExp=Math.max(expSoFar,avgExp);else fcExp=isCur&&dayN>=7?expSoFar/dayN*dim:expSoFar;
+  const fcInc=isPast?incSoFar:Math.max(incSoFar,avgInc);
+  const manualInc=Number((S.plan.inc||{})[k]||S.plan.incDefault||0);
+  const inc=manualInc>0?manualInc:fcInc;
+  const catBase={...avgCat};if(!hist.length)for(const [c,v] of sumBy(l.filter(t=>t.type==='expense'),'category'))catBase[c]=v;
+  return{all,l,hist,avgExp,avgInc,avgCat,catBase,dim,dayN,isCur,isPast,expSoFar,incSoFar,fcExp,fcInc,inc,manualInc,baseExp:hist.length?avgExp:fcExp}}
+function cutPlan(catBase,need){/* spread a needed monthly cut over flexible categories, by realistic capacity */
+  const caps=Object.entries(catBase).map(([c,v])=>[c,v,v*cutCap(c)]).filter(x=>x[2]>0).sort((a,b)=>b[2]-a[2]);
+  const capSum=caps.reduce((s,x)=>s+x[2],0);const f=capSum>0?Math.min(1,need/capSum):0;
+  return{capSum,cuts:caps.map(([c,v,cap])=>({c,avg:v,cut:cap*f})).filter(x=>x.cut>=5),covered:Math.min(need,capSum)}}
+function goalOf(k){const g=(S.plan.goals||{})[k];return Number(g!=null?g:S.plan.goalDefault||0)}
+function setIfIdle(el,v){if(document.activeElement!==el)el.value=v}
+function renderPlan(){const k=S.month;const P=planCtx(k);
+  const goalEl=$('#goalAmt'),incEl=$('#incAmt'),bankEl=$('#bankAmt'),tgtEl=$('#tgtAmt'),tmEl=$('#tgtMonths');
+  setIfIdle(goalEl,goalOf(k)||'');setIfIdle(incEl,P.manualInc||'');
+  const bank=S.plan.bank||null;setIfIdle(bankEl,bank?bank.amount:'');
+  const tgt=S.plan.target||{};setIfIdle(tgtEl,tgt.amount||'');if(document.activeElement!==tmEl&&tgt.months)tmEl.value=String(tgt.months);
+  const G=Math.max(0,parseFloat(String(goalEl.value).replace(/[^\d.]/g,''))||0);
+  const typedInc=parseFloat(String(incEl.value).replace(/[^\d.]/g,''))||0;const I=typedInc>0?typedInc:P.fcInc;
+  $('#incHint').textContent=typedInc>0?'':(P.fcInc>0?'לפי '+(P.incSoFar>=P.avgInc?'ההכנסות שנרשמו החודש':'ממוצע החודשים הקודמים')+': '+money(P.fcInc):'עוד לא נרשמו הכנסות. כתבי כאן כמה נכנס בחודש');
+  const fcSave=I-P.fcExp;
+  $('#planKpis').innerHTML=`<div class="kpi inc"><small>הכנסה צפויה</small><b class="num">${money(I)}</b><em>${typedInc>0?'לפי מה שכתבת':P.isPast?'בפועל':'לפי מה שנרשם והממוצע'}</em></div>
+   <div class="kpi exp"><small>${P.isPast?'הוצאות בפועל':'הוצאות צפויות'}</small><b class="num">${money(P.fcExp)}</b><em>${P.isPast?'&nbsp;':'עד עכשיו '+money(P.expSoFar)}</em></div>
+   <div class="kpi"><small>${P.isPast?'נחסך':'חיסכון צפוי'}</small><b class="num ${fcSave>=0?'pgood':'pbad'}">${money(fcSave)}</b><em>${I>0?(fcSave>=0?Math.round(fcSave/I*100)+'% מההכנסה':'הוצאות מעל ההכנסה'):'חסרה הכנסה'}</em></div>
+   <div class="kpi"><small>יתרה בבנק</small><b class="num ${bank&&bank.amount<0?'pbad':''}">${bank?money(bank.amount):'—'}</b><em>${bank?'עודכן '+bank.date.split('-').reverse().join('/'):'עוד לא עודכן'}</em></div>`;
+  /* goal → max expenses */
+  let go='';
+  if(I<=0)go=`<span>כדי לחשב תקרת הוצאות צריך לדעת כמה נכנס. כתבי למעלה הכנסה צפויה, או <a href="#add" data-addtype="income">הוסיפי את ההכנסות של החודש</a>.</span>`;
+  else if(!G)go=`<span>לפי הקצב הנוכחי ${P.isPast?'נחסכו':'תחסכי החודש'} <b class="${fcSave>=0?'pgood':'pbad'}">${money(fcSave)}</b>.</span><span class="muted">כתבי יעד חיסכון ואגיד לך מה תקרת ההוצאות.</span>`;
+  else{const max=I-G,left=max-P.expSoFar;const daysLeft=P.isCur?P.dim-P.dayN+1:P.dim;
+    go=`<span>כדי לחסוך <b>${money(G)}</b>, סך ההוצאות ${P.isPast?'היה צריך להיות':'צריך להיות'} עד</span><span class="big num">${money(max)}</span>`;
+    if(max<=0)go+=`<span class="pbad">היעד גבוה מההכנסה. נסי יעד נמוך יותר או הגדלת הכנסה.</span>`;
+    else if(P.isPast)go+=`<span>בפועל הוצאת ${money(P.expSoFar)}: ${left>=0?`<b class="pgood">עמדת ביעד</b>, עם עוד ${money(left)}.`:`<b class="pbad">חריגה של ${money(-left)}</b>.`}</span>`;
+    else{go+=`<span>כבר הוצאת ${money(P.expSoFar)}. ${left>=0?`נשארו <b class="pgood">${money(left)}</b> להוצאות${daysLeft>0?`, כלומר בערך <b>${money(left/daysLeft)}</b> ליום`:''}.`:`<b class="pbad">עברת את התקרה ב-${money(-left)}</b>.`}</span>`;
+      if(P.fcExp>max)go+=`<span class="muted">לפי הקצב, ההוצאות צפויות להגיע ל-${money(P.fcExp)}. כדי לעמוד ביעד צריך לחתוך בערך ${money(P.fcExp-max)}. ההצעה למטה מראה איפה.</span>`;
+      else go+=`<span class="muted">לפי הקצב (${money(P.fcExp)}) את בדרך לעמוד ביעד.</span>`}
+    const pct=max>0?Math.min(100,P.expSoFar/max*100):100;go+=`<div class="pprog"><span style="width:${pct}%;background:${pct>=100?'var(--exp)':pct>85?'var(--warn)':'var(--inc)'}"></span></div>`}
+  $('#goalOut').innerHTML=go;
+  /* what-if */
+  const W=parseFloat(String($('#whatIf').value).replace(/[^\d.]/g,''))||0;
+  $('#whatIfOut').innerHTML=W&&I>0?`→ תחסכי <span class="${I-W>=0?'pgood':'pbad'} num">${money(I-W)}</span> בחודש`:(W?'כתבי הכנסה צפויה כדי לחשב':'');
+  const base=P.baseExp||P.fcExp;
+  if(I>0&&base>0){const lv=[0,5,10,15,20,25].map(p=>({p,e:base*(1-p/100)}));
+    $('#ladder').innerHTML=`<tr><th>אם ההוצאות יהיו</th><th class="num">סך הוצאות</th><th class="num">חיסכון בחודש</th><th class="num">בשנה</th></tr>`+lv.map(x=>`<tr class="${x.p?'':'cur'}"><td>${x.p?'פחות '+x.p+'%':'כמו היום'}</td><td class="num">${money(x.e)}</td><td class="num ${I-x.e>=0?'pgood':'pbad'}">${money(I-x.e)}</td><td class="num">${money((I-x.e)*12)}</td></tr>`).join('')}
+  else $('#ladder').innerHTML='';
+  /* bank */
+  const net=I-base;let bo='';
+  if(!bank)bo=`<span>כתבי כמה יש עכשיו בחשבון העו"ש (אפשר גם מינוס), ואראה לאן הוא הולך בקצב הנוכחי.</span>`;
+  else{const now=mkey(today());const C=k===now?P:planCtx(now);const Ic=k===now?I:(Number((S.plan.inc||{})[now]||S.plan.incDefault||0)||C.fcInc);
+    const eom=bank.amount+Math.max(0,Ic-C.incSoFar)-Math.max(0,C.fcExp-C.expSoFar);const netc=Ic-(C.baseExp||C.fcExp);
+    bo=`<span>הערכה לסוף ${mName(now)}: <b class="num ${eom>=0?'pgood':'pbad'}">${money(eom)}</b></span>`;
+    if(Ic>0||C.baseExp>0){bo+=`<span>בקצב הנוכחי החשבון ${netc>=0?'גדל':'קטן'} בכ-<b class="${netc>=0?'pgood':'pbad'}">${money(Math.abs(netc))}</b> בחודש.</span>`;
+      bo+=`<table class="ptab"><tr><th>בעוד</th><th class="num">יתרה צפויה</th></tr>${[3,6,12].map(n=>`<tr><td>${n} חודשים</td><td class="num ${eom+netc*n>=0?'pgood':'pbad'}">${money(eom+netc*n)}</td></tr>`).join('')}</table>`;
+      if(netc<0&&eom>0)bo+=`<span class="pbad">בקצב הזה היתרה תיגמר בעוד כ-${Math.max(1,Math.floor(eom/-netc))} חודשים.</span>`}
+    if(Ic<=0)bo+=`<span class="muted">עוד לא נרשמו הכנסות, אז ההערכה מחשבת רק הוצאות. כתבי הכנסה צפויה בכרטיס החיסכון.</span>`}
+  $('#bankOut').innerHTML=bo;$('#bankWhen').textContent=bank?'עודכן ב-'+bank.date.split('-').reverse().join('/')+'. כדאי לעדכן פעם בשבוע-שבועיים.':'';
+  /* improvement plan */
+  const X=parseFloat(String(tgtEl.value).replace(/[^\d.]/g,''))||0;const N=Number(tmEl.value)||3;let po='';
+  if(!X){po=`<p class="muted">${bank&&bank.amount<0?`כדי לצאת מהמינוס כתבי ${money(-bank.amount)}. `:''}כתבי סכום ותקופה, ואחשב כמה לצמצם וכמה להגדיל הכנסה.</p>`}
+  else if(I<=0&&base<=0){po='<p class="muted">צריך קודם נתונים של הכנסות והוצאות.</p>'}
+  else{const perM=X/N;const gap=perM-net;
+    po=`<div class="pres"><span>צריך תוספת של <b>${money(perM)}</b> בחודש לחשבון.</span>`;
+    if(gap<=0){po+=`<span class="pgood">בקצב הנוכחי (${money(net)} בחודש) תגיעי לזה ${net>0?'בעוד כ-'+Math.ceil(X/net)+' חודשים':''}, בלי שינוי.</span></div>`}
+    else{const cp=cutPlan(P.catBase,gap);const mix=Math.max(0,Math.min(100,Number(S.planMix!=null?S.planMix:Math.round(Math.min(1,cp.capSum/gap)*100))));
+      const cutAmt=Math.min(cp.capSum,gap*mix/100),incAmt=gap-cutAmt;const cp2=cutPlan(P.catBase,cutAmt);
+      po+=`<span>${net<0?`כרגע החשבון יורד ב-${money(-net)} בחודש, אז`:`כרגע נשארים ${money(net)} בחודש, אז`} חסרים <b>${money(gap)}</b> בחודש.</span></div>
+      <label class="pq" for="mix">כמה מזה יבוא מצמצום הוצאות?</label><input type="range" id="mix" min="0" max="100" step="5" value="${mix}"><div class="mixrow"><span>הכל מהגדלת הכנסה</span><span>הכל מצמצום</span></div>
+      <div class="grid2" style="gap:12px"><div class="pres"><span class="pq">לצמצם הוצאות</span><span class="big num pgood">${money(cutAmt)}</span><span class="muted">בחודש</span>${cp2.cuts.slice(0,6).map(x=>`<span>${esc(x.c)}: <b class="num">−${money(x.cut)}</b> <small class="muted">(מ-${money(x.avg)} ל-${money(x.avg-x.cut)})</small></span>`).join('')}${cutAmt>=cp.capSum-1&&mix>0?'<small class="muted">זה בערך המקסימום שאפשר לחתוך בלי לפגוע בהוצאות הבסיסיות.</small>':''}</div>
+      <div class="pres"><span class="pq">להגדיל הכנסה</span><span class="big num pgood">${money(incAmt)}</span><span class="muted">בחודש</span>${incAmt>0?`<span>רעיונות:</span><span>• בדיקת החזר מס (בעיקר אם היו תקופות בלי עבודה או כמה מעסיקים)</span><span>• בדיקת זכאות למענק עבודה ולקצבאות בביטוח לאומי</span><span>• מכירת דברים שלא בשימוש (יד שנייה)</span><span>• עבודה נוספת, שעות נוספות או בקשה להעלאה</span>`:''}</div></div>`}}
+  $('#planOut').innerHTML=po;const mx=$('#mix');if(mx)mx.oninput=()=>{S.planMix=Number(mx.value);renderPlan()};
+  renderAutoBud(P,I,G)}
+function renderAutoBud(P,I,G){const el=$('#autoBud');const now=mkey(today());const dm=dataMonthsBefore(now);const enough=dm.length>=2||isDemo();
+  const hist=isDemo()?P.hist:dm.slice(-3);const hl=inMonths(data(),hist);const n=hist.length||1;
+  const avg={};for(const [c,v] of sumBy(hl.filter(t=>t.type==='expense'),'category'))avg[c]=v/n;const sumAvg=Object.values(avg).reduce((a,b)=>a+b,0);
+  if(!enough&&!S.planForce){el.innerHTML=`<h2>הצעת תקציב אוטומטית</h2><p>כשיהיו לי חודשיים מלאים של נתונים אציע לך תקציב בעצמי, לפי ההוצאות שלך ויעד החיסכון. כרגע יש ${dm.length===1?'חודש אחד':'0 חודשים'}.</p><div class="pprog"><span style="width:${dm.length*50}%"></span></div>${dm.length?'<button class="btn ghost sm" type="button" id="budForce" style="align-self:flex-start">להציע כבר עכשיו לפי חודש אחד</button>':''}`;
+    const f=$('#budForce');if(f)f.onclick=()=>{S.planForce=true;renderPlan()};return}
+  if(!sumAvg){el.innerHTML='<h2>הצעת תקציב אוטומטית</h2><p class="muted">אין מספיק הוצאות כדי להציע תקציב.</p>';return}
+  const target=I>0&&G>0?I-G:sumAvg*0.9;const need=Math.max(0,sumAvg-target);const cp=cutPlan(avg,need);const cutMap={};cp.cuts.forEach(x=>cutMap[x.c]=x.cut);
+  const prop=Object.entries(avg).sort((a,b)=>b[1]-a[1]).map(([c,v])=>({c,v,b:Math.max(10,r10(v-(cutMap[c]||0)))}));const tot=prop.reduce((s,x)=>s+x.b,0);
+  el.innerHTML=`<div class="ch"><h2>הצעת תקציב אוטומטית</h2><button class="btn sm" type="button" id="budApply">החלת התקציב</button></div>
+   <p>${enough?`יש לי ${hist.length} חודשים של נתונים (${hist.map(mShort).join(', ')}).`:'הצעה ראשונית לפי חודש אחד בלבד.'} ${I>0&&G>0?`התקציב בנוי כך שתחסכי <b>${money(G)}</b> מהכנסה של ${money(I)}.`:'כרגע אין יעד חיסכון, אז ההצעה היא 10% פחות מהממוצע. כתבי יעד למעלה והיא תתעדכן.'}
+   ${need>cp.capSum+1?` <span class="pbad">גם עם כל הקיצוצים הסבירים חסרים ${money(need-cp.capSum)}, ואת זה צריך להשלים מהגדלת הכנסה.</span>`:''} הבית, החשבונות והביטוחים כמעט לא נחתכים, ורוב הקיצוץ בא מהוצאות גמישות כמו בילויים וקניות.</p>
+   <table class="ptab"><tr><th>קטגוריה</th><th class="num">ממוצע היום</th><th class="num">תקציב מוצע</th><th class="num">הפרש</th></tr>${prop.map(x=>`<tr><td>${esc(x.c)}</td><td class="num">${money(x.v)}</td><td class="num"><b>${money(x.b)}</b></td><td class="num ${x.b<x.v-5?'pgood':''}">${x.b<x.v-5?'−'+money(x.v-x.b):'—'}</td></tr>`).join('')}<tr class="cur"><td>סה״כ</td><td class="num">${money(sumAvg)}</td><td class="num">${money(tot)}</td><td class="num pgood">${tot<sumAvg?'−'+money(sumAvg-tot):'—'}</td></tr></table>`;
+  $('#budApply').onclick=async()=>{if(Object.keys(S.budgets).length&&!confirm('להחליף את התקציב הקיים בהצעה הזו?'))return;S.budgets={};prop.forEach(x=>S.budgets[x.c]=x.b);const a=await getApi();try{await a.saveSettings();toast('התקציב נשמר. אפשר לשנות כל שורה בעמוד תקציב')}catch(e){toast('השמירה לא הצליחה')}location.hash='budget'}}
+async function savePlan(msg){const a=await getApi();try{await a.saveSettings();if(msg)toast(msg)}catch(e){toast('השמירה לא הצליחה')}}
+['#goalAmt','#incAmt','#whatIf','#tgtAmt'].forEach(id=>$(id).addEventListener('input',()=>renderPlan()));
+$('#goalAmt').addEventListener('change',()=>{const v=Math.round(parseFloat($('#goalAmt').value.replace(/[^\d.]/g,''))||0);S.plan.goals=S.plan.goals||{};S.plan.goals[S.month]=v;if(v)S.plan.goalDefault=v;savePlan('יעד החיסכון נשמר');renderPlan()});
+$('#incAmt').addEventListener('change',()=>{const v=Math.round(parseFloat($('#incAmt').value.replace(/[^\d.]/g,''))||0);S.plan.inc=S.plan.inc||{};if(v){S.plan.inc[S.month]=v;S.plan.incDefault=v}else{delete S.plan.inc[S.month]}savePlan('נשמר');renderPlan()});
+const saveBank=()=>{const raw=String($('#bankAmt').value).replace(/[^\d.\-−]/g,'').replace('−','-');if(raw===''){S.plan.bank=null}else{const v=parseFloat(raw);if(isNaN(v)){toast('לא הבנתי את הסכום');return}S.plan.bank={amount:Math.round(v*100)/100,date:today()}}$('#bankAmt').blur();savePlan('היתרה עודכנה');renderPlan()};
+$('#bankSave').onclick=saveBank;$('#bankAmt').addEventListener('keydown',e=>{if(e.key==='Enter')saveBank()});
+const saveTgt=()=>{S.plan.target={amount:Math.round(parseFloat($('#tgtAmt').value.replace(/[^\d.]/g,''))||0),months:Number($('#tgtMonths').value)};S.planMix=null;savePlan();renderPlan()};
+$('#tgtAmt').addEventListener('change',saveTgt);$('#tgtMonths').addEventListener('change',saveTgt);
+
 /* ================= insights ================= */
 function insights(all,k){const out=[];const l=inMonth(all,k);
   const inc=total(l,'income'),exp=total(l,'expense');
@@ -1258,6 +1407,7 @@ function render(){
   if(p==='import')renderImpHist();
   if(p==='reports')renderReports();
   if(p==='budget')renderBudget();
+  if(p==='plan')renderPlan();
   if(p==='bills')renderBills();
   renderBillAlert();
   if(p==='insights')renderInsights();
@@ -1278,7 +1428,7 @@ else{
   firebase.auth().getRedirectResult().catch(e=>{$('#gateMsg').textContent='הכניסה לא הצליחה ('+e.code+').'});
   firebase.auth().onAuthStateChanged(u=>{unsubs.forEach(f=>f());unsubs=[];fbUser=u;
     if(u){$('#gate').hidden=true;S.mode='pending';connect(u);render()}
-    else{$('#gate').hidden=false;api=null;S.tx=[];S.imports=[];S.budgets={};S.rules={};S.bills=JSON.parse(JSON.stringify(DEF_BILLS));S.paid={};S.groups=DEF_GROUPS.slice();S.whoMap={...DEF_WHO};S.cats=JSON.parse(JSON.stringify(DEF_CATS));S.mode='pending';render()}})}
+    else{$('#gate').hidden=false;api=null;S.tx=[];S.imports=[];S.budgets={};S.rules={};S.bills=JSON.parse(JSON.stringify(DEF_BILLS));S.paid={};S.groups=DEF_GROUPS.slice();S.whoMap={...DEF_WHO};S.plan={};S.cats=JSON.parse(JSON.stringify(DEF_CATS));S.mode='pending';render()}})}
 })();
 </script>
 
