@@ -9,6 +9,6 @@ window.FIREBASE_CONFIG = {
 };
 
 // מפתח האתר של reCAPTCHA v3 עבור Firebase App Check (ציבורי). ריק = בלי App Check.
-window.RECAPTCHA_SITE_KEY = "";
+window.RECAPTCHA_SITE_KEY = "6LdYNRUuAAAAAAdAOzdNt4aMmxXTH3oqwoGSMt0f";
 // true when the key above is a reCAPTCHA Enterprise key (Google Cloud console)
 window.RECAPTCHA_ENTERPRISE = true;
