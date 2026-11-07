@@ -455,7 +455,7 @@ td select{border:1px solid var(--line);background:var(--surface);border-radius:8
 (function(){
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const DEF_CATS={
-  expense:["מזון וסופר","דיור","חשבונות הבית","תחבורה ודלק","תקשורת ומנויים","בריאות","ביטוחים","מסעדות ובילויים","ביגוד וטיפוח","ילדים וחינוך","מתנות ואירועים","קניות לבית","אונליין ושונות","עמלות ומסים","אחר"],
+  expense:["מזון וסופר","דיור","חשבונות הבית","תחבורה ודלק","תקשורת ומנויים","בריאות","ספורט וכושר","ביטוחים","מסעדות ובילויים","ביגוד וטיפוח","ילדים וחינוך","מתנות ואירועים","קניות לבית","אונליין ושונות","עמלות ומסים","אחר"],
   income:["משכורת","עבודה עצמאית","קצבאות והחזרים","השקעות וריבית","מתנות","מכירות יד שנייה","אחר"]
 };
 const METHODS=["כרטיס אשראי","מזומן","העברה / ביט","הוראת קבע","העברה בנקאית"];
@@ -464,7 +464,8 @@ const KW=[
  [/שופרסל|רמי לוי|ויקטורי|יוחננוף|אושר עד|טיב טעם|יינות ביתן|מגה|חצי חינם|קרפור|סופר|מרכול|מכולת|am:pm|am pm|פרש מרקט|ירקות|קצביה|מאפיה|נתיב החסד|קשת טעמים|סטופ מרקט/i,"מזון וסופר"],
  [/פז |פז$|סונול|דלק|דור אלון|ten |yellow|ילו|רב.?קו|רכבת|אגד|דן |מוניות|gett|גט |פנגו|סלופארק|חניון|חניה|כביש 6|דרך ארץ|מוסך|טסט|אוטו/i,"תחבורה ודלק"],
  [/סלקום|פרטנר|פלאפון|הוט|hot|בזק|גולן טלקום|019|012|yes|נטפליקס|netflix|spotify|ספוטיפיי|apple\.com|itunes|google|disney|דיסני|youtube|icloud|אמזון פריים|chatgpt|openai|anthropic|claude/i,"תקשורת ומנויים"],
- [/סופר.?פארם|super.?pharm|be |מכבי|כללית|מאוחדת|לאומית|בית מרקחת|פארם|רופא|מרפאה|שיניים|אופטיקה|הולמס|גוד פארם|ניו פארם/i,"בריאות"],
+ [/הולמס|חדר כושר|כושר|אימון|אימונים|סטודיו|פילאטיס|יוגה|crossfit|קרוספיט|ספורט|דקטלון|decathlon|גו אקטיב|בריכה|קאנטרי|ריצה|אופניים/i,"ספורט וכושר"],
+ [/סופר.?פארם|super.?pharm|be |מכבי|כללית|מאוחדת|לאומית|בית מרקחת|פארם|רופא|מרפאה|שיניים|אופטיקה|גוד פארם|ניו פארם/i,"בריאות"],
  [/ביטוח|הראל|מגדל|הפניקס|כלל |מנורה|איילון|ליברה|ווישור|ביטוח ישיר|aig/i,"ביטוחים"],
  [/ארומה|קפה|cafe|coffee|מסעד|וולט|wolt|תן ביס|10bis|סיבוס|cibus|פיצה|בורגר|מקדונלד|שווארמה|סושי|בר |פאב|קולנוע|סינמה|יס פלאנט|הופעה|כרטיסים|לאן|eventim|גרג|לנדוור|רולדין/i,"מסעדות ובילויים"],
  [/זארה|zara|h&m|קסטרו|פוקס|fox|גולף|רנואר|טרמינל|נעלי|אדידס|nike|נייק|shein|שיין|מספר|קוסמטיק|ספא|לק |מניקור|terminal x|אמריקן איגל|מנגו/i,"ביגוד וטיפוח"],
@@ -512,7 +513,7 @@ const LS='kis-v1';
 const lsGet=()=>{try{return JSON.parse(localStorage.getItem(LS))||{}}catch(e){return{}}};
 const lsSet=()=>{try{localStorage.setItem(LS,JSON.stringify({tx:S.tx,cats:S.cats,budgets:S.budgets,rules:S.rules,imports:S.imports}))}catch(e){}};
 const rid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
-function settingsObj(){return{expense:S.cats.expense,income:S.cats.income,budgets:S.budgets,rules:S.rules,bills:S.bills,paid:S.paid}}
+function settingsObj(){return{expense:S.cats.expense,income:S.cats.income,budgets:S.budgets,rules:S.rules,bills:S.bills,paid:S.paid,migr:S.migr||[]}}
 function useLocal(){
   S.mode='local';const d=lsGet();S.tx=d.tx||[];if(d.cats)S.cats=d.cats;S.budgets=d.budgets||{};S.rules=d.rules||{};S.imports=d.imports||[];
   api={
@@ -538,7 +539,7 @@ async function connect(user){
     removeImport:async iid=>{for(const t of S.tx.filter(t=>t.importId===iid&&t.source!=='import')){const u={...t};delete u.id;delete u.importId;delete u.reconciled;delete u.bankName;delete u.bankAmount;await col.doc(t.id).set(u)}const ids=S.tx.filter(t=>t.importId===iid&&t.source==='import').map(t=>t.id);for(let i=0;i<ids.length;i+=400){const b=fs.batch();ids.slice(i,i+400).forEach(x=>b.delete(col.doc(x)));await b.commit()}await icol.doc(iid).delete()}
   };
   unsubs.push(col.onSnapshot(s=>{S.mode='cloud';S.tx=s.docs.map(d=>({...d.data(),id:d.id}));render()},e=>toast('לא הצלחתי לטעון את הנתונים: '+e.code)));
-  unsubs.push(sdoc.onSnapshot(s=>{if(s.exists){const d=s.data()||{};if(Array.isArray(d.expense)&&Array.isArray(d.income))S.cats={expense:d.expense,income:d.income};S.budgets=d.budgets||{};S.rules=d.rules||{};S.bills=Array.isArray(d.bills)?d.bills:JSON.parse(JSON.stringify(DEF_BILLS));S.paid=d.paid||{};render()}},()=>{}));
+  unsubs.push(sdoc.onSnapshot(s=>{if(s.exists){const d=s.data()||{};if(Array.isArray(d.expense)&&!(d.migr||[]).includes('sport')&&!d.expense.includes('ספורט וכושר')){const i=d.expense.indexOf('בריאות');d.expense.splice(i>=0?i+1:d.expense.length,0,'ספורט וכושר');sdoc.set({...d,migr:[...(d.migr||[]),'sport']}).catch(()=>{});return}if(Array.isArray(d.expense)&&Array.isArray(d.income))S.cats={expense:d.expense,income:d.income};S.budgets=d.budgets||{};S.rules=d.rules||{};S.bills=Array.isArray(d.bills)?d.bills:JSON.parse(JSON.stringify(DEF_BILLS));S.paid=d.paid||{};S.migr=d.migr||[];render()}},()=>{}));
   unsubs.push(icol.onSnapshot(s=>{S.imports=s.docs.map(d=>({...d.data(),id:d.id}));render()},()=>{}));
 }
 let unsubs=[];
@@ -556,7 +557,7 @@ function demoTx(){if(demoCache)return demoCache;const out=[];let n=0;const cur=m
     add(k,3,'expense',89,'תקשורת ומנויים','סלקום','כרטיס אשראי',true);
     add(k,4,'expense',55,'תקשורת ומנויים','נטפליקס','כרטיס אשראי',true);
     add(k,4,'expense',40,'תקשורת ומנויים','ספוטיפיי','כרטיס אשראי',true);
-    add(k,5,'expense',129,'בריאות','הולמס פלייס','כרטיס אשראי',true);
+    add(k,5,'expense',129,'ספורט וכושר','הולמס פלייס','כרטיס אשראי',true);
     add(k,9,'expense',Math.round(380*w),'חשבונות הבית','חברת החשמל','הוראת קבע',true);
     add(k,6,'expense',Math.round(640*w),'מזון וסופר','שופרסל דיל','כרטיס אשראי');
     add(k,13,'expense',Math.round(520*w),'מזון וסופר','רמי לוי','כרטיס אשראי');
