@@ -195,6 +195,11 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mu
 .txl{display:flex;flex-direction:column}
 .tx{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 4px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:right;width:100%}
 .tx:last-child{border-bottom:0}
+.tx.ed{cursor:pointer}
+.tx .qe{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tx .qe select{font:inherit;font-size:13px;padding:3px 26px 3px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface,#fff);color:inherit;max-width:170px;min-height:30px}
+.tx .qe select:focus{outline:2px solid var(--accent,#2b4a9b);outline-offset:1px}
+.tx .qe label{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted)}
 .tx:hover{background:var(--surface-2)}
 .tx .ic{width:10px;height:34px;border-radius:5px}
 .tx .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -627,7 +632,25 @@ function txRow(t){const sign=t.type==='income'?'+':'−';
   return `<button type="button" class="tx" data-id="${esc(t.id)}"><span class="ic" style="background:${catColor(t.type,t.category)}"></span>
   <span class="t"><b>${esc(t.note||t.category)}${t.fixed?'<span class="tag">קבוע</span>':''}${t.source==='import'?'<span class="tag">מיובא</span>':''}${t.reconciled?'<span class="tag" style="color:var(--inc);border-color:var(--inc)">✓ אומת מול הפירוט</span>':''}</b><small>${esc(t.note?t.category:'')}${t.type==='expense'?' · '+esc(whoOf(t)):''}${t.method?' · '+esc(t.method):''}</small></span>
   <span class="a num ${t.type==='income'?'inc':''}">${amt(t)<0?'+':sign}${fmt2.format(Math.abs(amt(t)))}</span></button>`}
-function bindRows(root,list){root.querySelectorAll('.tx').forEach(b=>b.onclick=()=>{const t=list.find(x=>String(x.id)===b.dataset.id);if(t)editTx(t)})}
+function txRowEd(t){const sign=t.type==='income'?'+':'−';
+  const cats=S.cats[t.type]||[];const opts=(cats.includes(t.category)?cats:[t.category,...cats]).map(c=>`<option ${c===t.category?'selected':''}>${esc(c)}</option>`).join('');
+  const w=whoOf(t);const wopts=t.type==='expense'?[...S.groups,UNASSIGNED].map(g=>`<option value="${g===UNASSIGNED?'':esc(g)}" ${g===w?'selected':''}>${esc(g)}</option>`).join(''):'';
+  return `<div class="tx ed" role="button" tabindex="0" data-id="${esc(t.id)}"><span class="ic" style="background:${catColor(t.type,t.category)}"></span>
+  <span class="t"><b>${esc(t.note||t.category)}${t.fixed?'<span class="tag">קבוע</span>':''}${t.source==='import'?'<span class="tag">מיובא</span>':''}${t.reconciled?'<span class="tag" style="color:var(--inc);border-color:var(--inc)">✓ אומת מול הפירוט</span>':''}</b>${t.method?`<small>${esc(t.method)}</small>`:''}
+  <span class="qe"><label>קטגוריה <select data-qcat aria-label="קטגוריה">${opts}</select></label>${t.type==='expense'?`<label>בשביל מי <select data-qwho aria-label="בשביל מי">${wopts}</select></label>`:''}</span></span>
+  <span class="a num ${t.type==='income'?'inc':''}">${amt(t)<0?'+':sign}${fmt2.format(Math.abs(amt(t)))}</span></div>`}
+async function quickSave(t,patch){const u={...t,...patch};delete u.id;
+  if(u.type==='expense'){if(!u.who||u.who===(S.whoMap[u.category]||''))delete u.who}
+  const a=await getApi();try{await a.update(t.id,u);toast('עודכן')}catch(e){toast('השמירה לא הצליחה, נסי שוב')}
+  if(patch.category&&t.note){const k=normM(t.note);if(k&&S.rules[k]!==patch.category&&guessCat(t.note,t.type)!==patch.category){S.rules[k]=patch.category;a&&a.saveSettings().catch(()=>{})}}}
+function bindRows(root,list){
+  root.querySelectorAll('.tx .qe').forEach(q=>{['click','keydown','pointerdown'].forEach(ev=>q.addEventListener(ev,e=>e.stopPropagation()))});
+  root.querySelectorAll('[data-qcat]').forEach(sel=>sel.addEventListener('change',()=>{const t=list.find(x=>String(x.id)===sel.closest('.tx').dataset.id);if(!t)return;
+    const patch={category:sel.value};quickSave(t,patch)}));
+  root.querySelectorAll('[data-qwho]').forEach(sel=>sel.addEventListener('change',()=>{const t=list.find(x=>String(x.id)===sel.closest('.tx').dataset.id);if(!t)return;
+    quickSave(t,{who:sel.value||''})}));
+  root.querySelectorAll('.tx.ed').forEach(b=>b.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===b){e.preventDefault();b.click()}}));
+root.querySelectorAll('.tx').forEach(b=>b.onclick=()=>{const t=list.find(x=>String(x.id)===b.dataset.id);if(t)editTx(t)})}
 const sortTx=l=>[...l].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
 
 /* ================= routing ================= */
@@ -725,7 +748,7 @@ function renderTx(){
   if(!l.length){el.innerHTML=`<div class="empty">${S.tx.length?'אין תנועות שמתאימות לסינון בחודש הזה':'עוד אין תנועות. <a href="#add">הוסיפי תנועה</a> או <a href="#import">ייבאי פירוט אשראי</a>.'}</div>`;return}
   const g={};for(const t of sortTx(l))(g[t.date]=g[t.date]||[]).push(t);
   el.innerHTML=Object.entries(g).map(([d,ts])=>{const [y,m,dd]=d.split('-').map(Number);const net=total(ts,'income')-total(ts,'expense');
-    return `<div class="dayh"><span>${dayFmt.format(new Date(y,m-1,dd))}</span><span class="num">${net>=0?'+':'−'}${fmt.format(Math.abs(Math.round(net)))}</span></div>${ts.map(txRow).join('')}`}).join('');
+    return `<div class="dayh"><span>${dayFmt.format(new Date(y,m-1,dd))}</span><span class="num">${net>=0?'+':'−'}${fmt.format(Math.abs(Math.round(net)))}</span></div>${ts.map(txRowEd).join('')}`}).join('');
   bindRows(el,l)}
 
 /* ================= import ================= */
