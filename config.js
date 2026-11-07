@@ -7,3 +7,6 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "909250826374",
   appId: "1:909250826374:web:ce23009088f63be2080107"
 };
+
+// מפתח האתר של reCAPTCHA v3 עבור Firebase App Check (ציבורי). ריק = בלי App Check.
+window.RECAPTCHA_SITE_KEY = "";
