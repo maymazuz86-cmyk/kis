@@ -116,6 +116,7 @@ p{margin:0}
 /* ----- common ----- */
 .phead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .phead .lead{display:flex;flex-direction:column;gap:4px;min-width:0}
+.backbtn{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--line,#ddd);border-radius:999px;padding:5px 12px 5px 14px;font:inherit;font-size:14px;color:inherit;cursor:pointer;margin-bottom:4px}.backbtn:hover{background:rgba(0,0,0,.05)}.backbtn svg{width:16px;height:16px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .card .ch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
@@ -631,6 +632,11 @@ const sortTx=l=>[...l].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.cr
 
 /* ================= routing ================= */
 const PAGES={overview:'לוח בקרה',add:'הוספת תנועה',transactions:'תנועות',import:'ייבוא פירוט',reports:'דוחות וניתוח',bills:'חשבונות קבועים',budget:'תקציב',insights:'תובנות וייעוץ',prefs:'הגדרות'};
+let navDepth=0;window.addEventListener('hashchange',()=>{navDepth++});
+document.querySelectorAll('section.page').forEach(sec=>{if(sec.id==='p-overview')return;const lead=sec.querySelector('.phead .lead');if(!lead)return;
+  const b=document.createElement('button');b.type='button';b.className='backbtn';b.setAttribute('aria-label','חזרה');
+  b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>חזרה';
+  b.addEventListener('click',()=>{if(navDepth>0){navDepth-=2;history.back()}else location.hash='overview'});lead.prepend(b)});
 function route(){let p=(location.hash||'').slice(1);if(!PAGES[p])p='overview';S.page=p;
   for(const k in PAGES)$('#p-'+k).hidden=k!==p;
   $$('#nav a').forEach(a=>{if(a.dataset.p===p)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
