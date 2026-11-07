@@ -1,0 +1,937 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18322b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="הכיס שלי">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>*,*::before,*::after{box-sizing:border-box}html{color-scheme:light;-webkit-text-size-adjust:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="config.js"></script>
+<title>הכיס שלי</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Secular+One&display=swap">
+<style>
+/* Layout: app shell. Desktop: fixed sidebar on the right (RTL) + content column. Phone: top bar, slide-in menu, floating add button. */
+:root{
+  --bg:#eef2ef; --surface:#ffffff; --surface-2:#f5f7f5; --ink:#16201c; --muted:#5b6862; --line:#d9e1dc;
+  --side:#18322b; --side-ink:#e6efe9; --side-muted:#9db5aa; --side-hi:#244a3f;
+  --accent:#24408f; --accent-ink:#ffffff; --accent-soft:#e3e8f7;
+  --inc:#18744e; --inc-soft:#dcefe5; --exp:#b8432c; --exp-soft:#f6e1db; --warn:#9a6a10; --warn-soft:#f6ecd4;
+  --font-display:"Secular One","Assistant",system-ui,sans-serif;
+  --font-body:"Assistant",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1412; --surface:#171e1b; --surface-2:#1d2622; --ink:#e7eeea; --muted:#95a49c; --line:#2b3632;
+  --side:#0b1310; --side-ink:#e6efe9; --side-muted:#8aa398; --side-hi:#1b2e27;
+  --accent:#93a9ff; --accent-ink:#0c1431; --accent-soft:#232c4a;
+  --inc:#52c590; --inc-soft:#173326; --exp:#ff8d74; --exp-soft:#3a201a; --warn:#e8b54f; --warn-soft:#332811; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1412; --surface:#171e1b; --surface-2:#1d2622; --ink:#e7eeea; --muted:#95a49c; --line:#2b3632;
+  --side:#0b1310; --side-ink:#e6efe9; --side-muted:#8aa398; --side-hi:#1b2e27;
+  --accent:#93a9ff; --accent-ink:#0c1431; --accent-soft:#232c4a;
+  --inc:#52c590; --inc-soft:#173326; --exp:#ff8d74; --exp-soft:#3a201a; --warn:#e8b54f; --warn-soft:#332811; color-scheme:dark}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--font-body);font-size:16px;line-height:1.5;direction:rtl}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(24px,5vw,30px);margin:0;line-height:1.2;text-wrap:balance}
+h2{font-family:var(--font-display);font-weight:400;font-size:19px;margin:0;text-wrap:balance}
+h3{font-size:14px;margin:0;color:var(--muted);font-weight:700;letter-spacing:.3px}
+p{margin:0}
+.muted{color:var(--muted);font-size:14px}
+
+/* ----- shell ----- */
+.side{position:fixed;top:0;bottom:0;right:0;width:240px;background:var(--side);color:var(--side-ink);z-index:25;display:flex;flex-direction:column;
+  padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));padding-right:env(safe-area-inset-right,0px)}
+.side .logo{font-family:var(--font-display);font-size:26px;padding:0 22px 4px}
+.side .sub{font-size:13px;color:var(--side-muted);padding:0 22px 18px}
+.side nav{display:flex;flex-direction:column;gap:2px;padding:0 10px;overflow-y:auto;flex:1}
+.side nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:var(--side-ink);text-decoration:none;font-weight:600;font-size:16px}
+.side nav a svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;opacity:.85;flex:none}
+.side nav a:hover{background:var(--side-hi)}
+.side nav a[aria-current="page"]{background:var(--side-ink);color:var(--side)}
+.side nav .sep{height:1px;background:var(--side-hi);margin:8px 12px}
+.side .sync{padding:12px 22px 0;font-size:13px;color:var(--side-muted);display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--side-muted);flex:none}
+.sync.cloud .dot{background:#52c590}.sync.local .dot{background:#e8b54f}
+.main{margin-right:240px;min-height:100%;padding-left:max(28px,env(safe-area-inset-left,0px));padding-right:28px;padding-block:28px 60px}
+.page[hidden]{display:none!important}
+.page{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.topbar{display:none}
+.scrim{display:none}
+.fab{display:none}
+@media (max-width:899px){
+  .side{transform:translateX(100%);transition:transform .22s ease;width:min(280px,82vw)}
+  body.menu .side{transform:none;box-shadow:0 0 40px rgba(0,0,0,.25)}
+  body.menu .scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:24}
+  .main{margin-right:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 calc(96px + env(safe-area-inset-bottom,0px))}
+  .topbar{display:flex;position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);align-items:center;gap:10px;padding-block:10px;margin-bottom:6px}
+  .topbar .t{font-family:var(--font-display);font-size:20px;flex:1}
+  .iconbtn{border:1px solid var(--line);background:var(--surface);border-radius:10px;width:42px;height:42px;display:grid;place-items:center}
+  .iconbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+  .fab{display:grid;place-items:center;position:fixed;left:max(18px,calc(18px + env(safe-area-inset-left,0px)));bottom:calc(20px + env(safe-area-inset-bottom,0px));width:60px;height:60px;border-radius:50%;background:var(--accent);color:var(--accent-ink);border:0;box-shadow:0 6px 20px rgba(0,0,0,.22);z-index:19;text-decoration:none}
+  .fab svg{width:28px;height:28px;stroke:currentColor;stroke-width:2.4;fill:none;stroke-linecap:round}
+  body.page-add .fab{display:none}
+}
+@media (prefers-reduced-motion:reduce){.side{transition:none}}
+
+/* ----- login gate ----- */
+.gate{position:fixed;inset:0;z-index:50;background:var(--side);color:var(--side-ink);display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+.gate[hidden]{display:none!important}
+.gbox{max-width:380px;display:flex;flex-direction:column;gap:18px;text-align:center;align-items:center}
+.glogo{font-family:var(--font-display);font-size:44px;line-height:1}
+.gbox p{color:var(--side-muted)}
+.gbox .muted{color:#e8b54f}
+/* ----- common ----- */
+.phead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.phead .lead{display:flex;flex-direction:column;gap:4px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card .ch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+@media (max-width:760px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.btn{border:0;border-radius:11px;padding:12px 18px;font-weight:700;font-size:16px;background:var(--accent);color:var(--accent-ink);text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line);font-weight:600}
+.btn.danger{background:transparent;color:var(--exp);border:1px solid var(--exp)}
+.btn.sm{padding:7px 12px;font-size:14px;border-radius:9px}
+.btn:disabled{opacity:.5;cursor:default}
+.inp{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;font-size:16px;color:var(--ink);width:100%;box-sizing:border-box;min-width:0}
+select.inp{padding-inline-end:28px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);min-width:0}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>*{flex:1 1 150px;min-width:0}
+.month{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.month button{border:0;background:transparent;border-radius:8px;width:34px;height:34px;font-size:18px}
+.month button:hover{background:var(--surface-2)}
+.month b{font-weight:700;min-width:120px;text-align:center}
+.banner{background:var(--warn-soft);border-radius:12px;padding:10px 14px;font-size:14px;border:1px solid var(--line)}
+.banner b{color:var(--warn)}
+.empty{color:var(--muted);text-align:center;padding:26px 8px}
+.pill{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:1px 9px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.pill.ok{background:var(--inc-soft);color:var(--inc);border-color:transparent}
+.pill.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.pill.bad{background:var(--exp-soft);color:var(--exp);border-color:transparent}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi small{color:var(--muted);font-size:13px;font-weight:600}
+.kpi b{font-family:var(--font-display);font-weight:400;font-size:clamp(20px,3.4vw,28px);direction:ltr;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi em{font-style:normal;font-size:12px;color:var(--muted)}
+.kpi.inc b{color:var(--inc)}.kpi.exp b{color:var(--exp)}
+
+/* bars */
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:grid;grid-template-columns:minmax(80px,32%) 1fr auto;gap:10px;align-items:center;font-size:15px}
+.bar .lb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:7px}
+.bar .lb i{width:9px;height:9px;border-radius:50%;flex:none}
+.bar .tr{height:12px;background:var(--surface-2);border-radius:6px;overflow:hidden;position:relative}
+.bar .fl{display:block;height:100%;border-radius:6px}
+.bar .v{direction:ltr;min-width:76px;text-align:left;font-weight:700}
+.bar .p{color:var(--muted);font-size:12px;font-weight:400}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;height:auto;min-width:340px}
+.legend{display:flex;gap:16px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-inline-end:5px;vertical-align:middle}
+
+/* transactions */
+.txl{display:flex;flex-direction:column}
+.tx{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 4px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:right;width:100%}
+.tx:last-child{border-bottom:0}
+.tx:hover{background:var(--surface-2)}
+.tx .ic{width:10px;height:34px;border-radius:5px}
+.tx .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx .t small{color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.tx .a{font-weight:700;direction:ltr;text-align:left}
+.tx .a small{display:block;color:var(--muted);font-weight:400;font-size:12px;direction:rtl}
+.a.inc{color:var(--inc)}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 5px;margin-inline-start:6px;color:var(--muted);font-weight:600}
+.dayh{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:12px 4px 2px;font-weight:600}
+
+/* add form */
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{border:0;background:transparent;border-radius:9px;padding:10px;font-weight:700;color:var(--muted)}
+.seg button[aria-pressed="true"].exp{background:var(--exp-soft);color:var(--exp)}
+.seg button[aria-pressed="true"].inc{background:var(--inc-soft);color:var(--inc)}
+.amount{display:flex;align-items:baseline;gap:8px;border-bottom:2px solid var(--line);padding-bottom:6px}
+.amount:focus-within{border-color:var(--accent)}
+.amount span{font-family:var(--font-display);font-size:28px;color:var(--muted)}
+.amount input{border:0;background:transparent;font-family:var(--font-display);font-size:44px;width:100%;min-width:0;outline:none;direction:ltr;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:15px;display:inline-flex;align-items:center;gap:6px}
+.chip i{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:700}
+.check{display:flex;align-items:center;gap:8px;font-size:15px}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.actions .btn:first-child{flex:1 1 200px}
+.addwrap{max-width:620px}
+
+/* import */
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:28px 16px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;background:var(--surface)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop svg{width:40px;height:40px;stroke:var(--accent);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.steps{grid-template-columns:minmax(0,1fr)}}
+.step{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--muted)}
+.step b{display:grid;place-items:center;flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:14px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{background:var(--surface-2);font-weight:700;color:var(--muted);font-size:13px;position:sticky;top:0}
+td.m{white-space:normal;min-width:140px}
+td.amt{direction:ltr;text-align:left;font-weight:700}
+tr.dup td{opacity:.55}
+td select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 6px;font-size:14px;max-width:170px}
+.progress{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.progress span{display:block;height:100%;background:var(--accent);transition:width .2s}
+
+/* budget */
+.bud{display:grid;grid-template-columns:minmax(110px,1.2fr) minmax(0,3fr) 120px;gap:14px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.bud:last-child{border-bottom:0}
+.bud .nm{display:flex;align-items:center;gap:8px;font-weight:600;min-width:0}
+.bud .nm i{width:9px;height:9px;border-radius:50%;flex:none}
+.bud .meter{display:flex;flex-direction:column;gap:4px;min-width:0}
+.bud .track{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.bud .track span{display:block;height:100%;border-radius:5px}
+.bud .meta{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);gap:8px}
+.bud input{text-align:left;direction:ltr}
+@media (max-width:600px){.bud{grid-template-columns:minmax(0,1fr) 110px}.bud .meter{grid-column:1 / -1;grid-row:2}}
+
+/* insights */
+.ins{display:grid;grid-template-columns:6px 1fr;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.ins .s{border-radius:3px;background:var(--muted)}
+.ins.good .s{background:var(--inc)}.ins.warn .s{background:var(--warn)}.ins.bad .s{background:var(--exp)}.ins.info .s{background:var(--accent)}
+.ins b{display:block;margin-bottom:2px}
+.ins p{color:var(--muted)}
+.ai h4{margin:14px 0 4px;font-size:16px}
+.ai ul{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px}
+.ai p{margin:4px 0}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(28px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:600;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+
+
+<div class="gate" id="gate">
+  <div class="gbox">
+    <div class="glogo">הכיס שלי</div>
+    <p>מעקב הכנסות והוצאות, ניתוח פירוטי אשראי ותקציב חודשי. הנתונים שלך שמורים בחשבון שלך ומסונכרנים בין הנייד למחשב.</p>
+    <button class="btn" type="button" id="loginBtn"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#fff" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z"/><path fill="#fff" opacity=".85" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22z"/><path fill="#fff" opacity=".7" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1a10 10 0 0 0 0 9.2L6.4 14z"/><path fill="#fff" opacity=".55" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9A10 10 0 0 0 3.1 7.4L6.4 10c.8-2.3 3-4.1 5.6-4.1z"/></svg>כניסה עם Google</button>
+    <p class="muted" id="gateMsg"></p>
+  </div>
+</div>
+<aside class="side" id="side" aria-label="תפריט">
+  <div class="logo">הכיס שלי</div>
+  <div class="sub">ניהול הכנסות והוצאות</div>
+  <nav id="nav">
+    <a href="#overview" data-p="overview"><svg viewBox="0 0 24 24"><path d="M3 12l9-8 9 8M5 10v10h14V10"/></svg>לוח בקרה</a>
+    <a href="#add" data-p="add"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>הוספת תנועה</a>
+    <a href="#transactions" data-p="transactions"><svg viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>תנועות</a>
+    <a href="#import" data-p="import"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>ייבוא פירוט אשראי</a>
+    <div class="sep"></div>
+    <a href="#reports" data-p="reports"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>דוחות וניתוח</a>
+    <a href="#budget" data-p="budget"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 4"/></svg>תקציב</a>
+    <a href="#insights" data-p="insights"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>תובנות וייעוץ</a>
+    <div class="sep"></div>
+    <a href="#prefs" data-p="prefs"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>הגדרות</a>
+  </nav>
+  <div class="sync" id="sync"><span class="dot"></span><span id="syncTxt">מתחבר…</span></div>
+</aside>
+<div class="scrim" id="scrim"></div>
+
+<main class="main">
+  <div class="topbar">
+    <button class="iconbtn" type="button" id="menuBtn" aria-label="פתיחת תפריט"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <span class="t" id="topTitle">הכיס שלי</span>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section class="page" id="p-overview" hidden>
+    <div class="phead"><div class="lead"><h1>לוח בקרה</h1><p class="muted" id="ovSub"></p></div><div class="month" data-month></div></div>
+    <div class="banner" data-demo hidden><b>נתוני דוגמה.</b> כך ייראה האתר עם נתונים. ברגע שתוסיפי תנועה או תייבאי פירוט אשראי, הדוגמה תיעלם.</div>
+    <div class="kpis" id="ovKpis"></div>
+    <div class="grid2">
+      <div class="card"><div class="ch"><h2>לאן הכסף הולך</h2><a class="muted" href="#reports">לדוח המלא</a></div><div class="bars" id="ovExp"></div></div>
+      <div class="card"><div class="ch"><h2>תקציב החודש</h2><a class="muted" href="#budget">ניהול תקציב</a></div><div id="ovBud"></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="ch"><h2>מאיפה הכסף מגיע</h2></div><div class="bars" id="ovInc"></div></div>
+      <div class="card"><div class="ch"><h2>תנועות אחרונות</h2><a class="muted" href="#transactions">לכל התנועות</a></div><div class="txl" id="ovRecent"></div></div>
+    </div>
+  </section>
+
+  <!-- ADD -->
+  <section class="page" id="p-add" hidden>
+    <div class="phead"><div class="lead"><h1 id="addTitle">הוספת תנועה</h1><p class="muted">הוצאה או הכנסה, בכמה שניות.</p></div></div>
+    <form class="card addwrap" id="form" autocomplete="off">
+      <div class="seg" role="group" aria-label="סוג תנועה">
+        <button type="button" class="exp" id="tExp" aria-pressed="true">הוצאה</button>
+        <button type="button" class="inc" id="tInc" aria-pressed="false">הכנסה</button>
+      </div>
+      <label class="amount" for="amt"><span>₪</span><input id="amt" inputmode="decimal" placeholder="0" aria-label="סכום"></label>
+      <div style="display:flex;flex-direction:column;gap:8px"><h3 id="catLbl">על מה?</h3><div class="chips" id="catChips"></div></div>
+      <div class="row">
+        <label class="f">תאריך<input class="inp" type="date" id="date"></label>
+        <label class="f">אמצעי תשלום / ערוץ<input class="inp" id="method" list="methods"></label>
+        <datalist id="methods"></datalist>
+      </div>
+      <label class="f">בית עסק / תיאור<input class="inp" id="note" placeholder="למשל: שופרסל, נטפליקס, לקוחה חדשה"></label>
+      <label class="check"><input type="checkbox" id="fixed"> <span id="fixedLbl">הוצאה קבועה שחוזרת כל חודש</span></label>
+      <div class="actions">
+        <button class="btn" id="saveBtn" type="submit">שמירה</button>
+        <button class="btn ghost" id="cancelEdit" type="button" hidden>ביטול</button>
+        <button class="btn danger" id="delBtn" type="button" hidden>מחיקה</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- TRANSACTIONS -->
+  <section class="page" id="p-transactions" hidden>
+    <div class="phead"><div class="lead"><h1>תנועות</h1><p class="muted" id="txSub"></p></div><div class="month" data-month></div></div>
+    <div class="card">
+      <div class="row">
+        <label class="f">חיפוש<input class="inp" id="fq" placeholder="בית עסק, תיאור…"></label>
+        <label class="f">סוג<select class="inp" id="ftype"><option value="">הכל</option><option value="expense">הוצאות</option><option value="income">הכנסות</option></select></label>
+        <label class="f">קטגוריה<select class="inp" id="fcat"></select></label>
+        <label class="f">מקור<select class="inp" id="fsrc"><option value="">הכל</option><option value="manual">הוזן ידנית</option><option value="import">מיובא</option></select></label>
+      </div>
+      <div class="txl" id="txList"></div>
+    </div>
+  </section>
+
+  <!-- IMPORT -->
+  <section class="page" id="p-import" hidden>
+    <div class="phead"><div class="lead"><h1>ייבוא פירוט אשראי או בנק</h1><p class="muted">מעלים קובץ, בודקים, ושומרים. כל העסקאות נכנסות מסווגות.</p></div></div>
+    <div class="steps">
+      <div class="step"><b>1</b><span>מורידים את הפירוט מאתר חברת האשראי או הבנק (מקס, כאל, ישראכרט, אמריקן אקספרס, עו״ש).</span></div>
+      <div class="step"><b>2</b><span>מעלים כאן קובץ Excel, ‏CSV או PDF.</span></div>
+      <div class="step"><b>3</b><span>בודקים את הקטגוריות ושומרים. בפעם הבאה אותו בית עסק יסווג לבד.</span></div>
+    </div>
+    <div class="drop" id="drop">
+      <svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+      <b>גררי לכאן קובץ, או</b>
+      <label class="btn" for="file">בחירת קובץ</label>
+      <input type="file" id="file" accept=".xlsx,.xls,.csv,.pdf" hidden>
+      <span class="muted">Excel ‏(xlsx/xls), ‏CSV או PDF. הכי מדויק: קובץ Excel מאתר חברת האשראי.</span>
+    </div>
+    <div class="card" id="impWork" hidden>
+      <div class="ch"><h2 id="impTitle">מעבד…</h2><span class="muted" id="impMeta"></span></div>
+      <div class="progress" id="impProg"><span style="width:0%"></span></div>
+      <p class="muted" id="impStatus"></p>
+      <div class="row" id="impOpts" hidden>
+        <label class="f">שם הכרטיס / החשבון<input class="inp" id="impCard" placeholder="למשל: מקס 4521"></label>
+        <label class="f">סימון גורף<select class="inp" id="impBulk"><option value="">שינוי קטגוריה לכל המסומנות…</option></select></label>
+      </div>
+      <div class="tablewrap" id="impTableWrap" hidden><table><thead><tr><th><input type="checkbox" id="impAll" checked aria-label="בחירת הכל"></th><th>תאריך</th><th>בית עסק</th><th>סכום</th><th>קטגוריה</th><th></th></tr></thead><tbody id="impBody"></tbody></table></div>
+      <div class="actions" id="impActions" hidden>
+        <button class="btn" type="button" id="impSave">שמירת העסקאות</button>
+        <button class="btn ghost" type="button" id="impCancel">ביטול</button>
+      </div>
+    </div>
+    <div class="card"><div class="ch"><h2>ייבואים קודמים</h2></div><div id="impHist"></div></div>
+  </section>
+
+  <!-- REPORTS -->
+  <section class="page" id="p-reports" hidden>
+    <div class="phead"><div class="lead"><h1>דוחות וניתוח</h1><p class="muted" id="repSub"></p></div>
+      <div class="row" style="flex:0 1 auto"><select class="inp" id="repRange" style="width:auto"><option value="1">חודש אחד</option><option value="3">3 חודשים</option><option value="6">6 חודשים</option><option value="12">12 חודשים</option></select><div class="month" data-month></div></div></div>
+    <div class="banner" data-demo hidden><b>נתוני דוגמה.</b> הדוחות יתמלאו בנתונים שלך אחרי ההזנה או הייבוא הראשון.</div>
+    <div class="kpis" id="repKpis"></div>
+    <div class="card"><div class="ch"><h2>הכנסות מול הוצאות, 12 חודשים</h2><div class="legend"><span><i style="background:var(--inc)"></i>הכנסות</span><span><i style="background:var(--exp)"></i>הוצאות</span></div></div><div class="chart" id="repTrend"></div></div>
+    <div class="card"><div class="ch"><h2>הוצאות לפי קטגוריה</h2><span class="muted">שינוי מול התקופה הקודמת</span></div><div class="tablewrap"><table><thead><tr><th>קטגוריה</th><th>סכום</th><th>% מההוצאות</th><th>ממוצע לחודש</th><th>שינוי</th></tr></thead><tbody id="repCats"></tbody></table></div></div>
+    <div class="grid2">
+      <div class="card"><h2>בתי העסק שהכי הרווחו ממך</h2><div class="bars" id="repMerch"></div></div>
+      <div class="card"><h2>לפי אמצעי תשלום</h2><div class="bars" id="repMethod"></div><h2 style="margin-top:8px">קבוע מול משתנה</h2><div class="bars" id="repFixed"></div></div>
+    </div>
+    <div class="card"><h2>מקורות הכנסה</h2><div class="bars" id="repInc"></div></div>
+  </section>
+
+  <!-- BUDGET -->
+  <section class="page" id="p-budget" hidden>
+    <div class="phead"><div class="lead"><h1>תקציב חודשי</h1><p class="muted">קבעי כמה מותר להוציא בכל קטגוריה, ותראי איפה את עומדת.</p></div><div class="month" data-month></div></div>
+    <div class="kpis" id="budKpis"></div>
+    <div class="card"><div class="ch"><h2>לפי קטגוריה</h2><button class="btn ghost sm" type="button" id="budSuggest">הצעת תקציב לפי ממוצע 3 חודשים</button></div><div id="budList"></div></div>
+  </section>
+
+  <!-- INSIGHTS -->
+  <section class="page" id="p-insights" hidden>
+    <div class="phead"><div class="lead"><h1>תובנות וייעוץ</h1><p class="muted">איפה אפשר לחסוך ואיך להגדיל הכנסה.</p></div><div class="month" data-month></div></div>
+    <div class="banner" data-demo hidden><b>נתוני דוגמה.</b> התובנות מחושבות על נתונים לדוגמה עד שתזיני נתונים משלך.</div>
+    <div class="grid2" style="align-items:start">
+      <div style="display:flex;flex-direction:column;gap:10px" id="insList"></div>
+      <div class="card">
+        <h2>ייעוץ אישי מ-Claude</h2>
+        <p class="muted">האתר מכין סיכום של שלושת החודשים האחרונים (סכומים לפי קטגוריה, בתי העסק הגדולים והתשלומים הקבועים, בלי פרטים מזהים). מעתיקים, מדביקים בשיחה עם Claude, ומקבלים הצעות מותאמות.</p>
+        <button class="btn" id="aiBtn" type="button">העתקת הסיכום ל-Claude</button>
+        <div class="ai" id="aiOut"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREFS -->
+  <section class="page" id="p-prefs" hidden>
+    <div class="phead"><div class="lead"><h1>הגדרות</h1></div></div>
+    <div class="grid2" style="align-items:start">
+      <div class="card"><h2>קטגוריות הוצאה</h2><div class="chips" id="setExp"></div>
+        <div class="row"><input class="inp" id="newExp" placeholder="קטגוריה חדשה"><button class="btn ghost" type="button" id="addExp" style="flex:0 0 auto">הוספה</button></div></div>
+      <div class="card"><h2>מקורות הכנסה</h2><div class="chips" id="setInc"></div>
+        <div class="row"><input class="inp" id="newInc" placeholder="מקור חדש"><button class="btn ghost" type="button" id="addInc" style="flex:0 0 auto">הוספה</button></div></div>
+      <div class="card"><h2>בתי עסק שזוכרים</h2><p class="muted">כשאת משנה קטגוריה לבית עסק בייבוא, האתר זוכר את זה לפעם הבאה.</p><div id="rulesList"></div></div>
+      <div class="card"><h2>גיבוי ונתונים</h2>
+        <p class="muted" id="whereTxt"></p>
+        <button class="btn ghost" type="button" id="csvBtn">הורדת כל התנועות כ-CSV</button>
+        <button class="btn ghost" type="button" id="logoutBtn">יציאה מהחשבון</button></div>
+    </div>
+  </section>
+</main>
+
+<a class="fab" href="#add" aria-label="הוספת תנועה"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const DEF_CATS={
+  expense:["מזון וסופר","דיור","חשבונות הבית","תחבורה ודלק","תקשורת ומנויים","בריאות","ביטוחים","מסעדות ובילויים","ביגוד וטיפוח","ילדים וחינוך","מתנות ואירועים","קניות לבית","אונליין ושונות","עמלות ומסים","אחר"],
+  income:["משכורת","עבודה עצמאית","קצבאות והחזרים","השקעות וריבית","מתנות","מכירות יד שנייה","אחר"]
+};
+const METHODS=["כרטיס אשראי","מזומן","העברה / ביט","הוראת קבע","העברה בנקאית"];
+/* keyword → category, used before Claude and before user-learned rules */
+const KW=[
+ [/שופרסל|רמי לוי|ויקטורי|יוחננוף|אושר עד|טיב טעם|יינות ביתן|מגה|חצי חינם|קרפור|סופר|מרכול|מכולת|am:pm|am pm|פרש מרקט|ירקות|קצביה|מאפיה|נתיב החסד|קשת טעמים|סטופ מרקט/i,"מזון וסופר"],
+ [/פז |פז$|סונול|דלק|דור אלון|ten |yellow|ילו|רב.?קו|רכבת|אגד|דן |מוניות|gett|גט |פנגו|סלופארק|חניון|חניה|כביש 6|דרך ארץ|מוסך|טסט|אוטו/i,"תחבורה ודלק"],
+ [/סלקום|פרטנר|פלאפון|הוט|hot|בזק|גולן טלקום|019|012|yes|נטפליקס|netflix|spotify|ספוטיפיי|apple\.com|itunes|google|disney|דיסני|youtube|icloud|אמזון פריים|chatgpt|openai|anthropic|claude/i,"תקשורת ומנויים"],
+ [/סופר.?פארם|super.?pharm|be |מכבי|כללית|מאוחדת|לאומית|בית מרקחת|פארם|רופא|מרפאה|שיניים|אופטיקה|הולמס|גוד פארם|ניו פארם/i,"בריאות"],
+ [/ביטוח|הראל|מגדל|הפניקס|כלל |מנורה|איילון|ליברה|ווישור|ביטוח ישיר|aig/i,"ביטוחים"],
+ [/ארומה|קפה|cafe|coffee|מסעד|וולט|wolt|תן ביס|10bis|סיבוס|cibus|פיצה|בורגר|מקדונלד|שווארמה|סושי|בר |פאב|קולנוע|סינמה|יס פלאנט|הופעה|כרטיסים|לאן|eventim|גרג|לנדוור|רולדין/i,"מסעדות ובילויים"],
+ [/זארה|zara|h&m|קסטרו|פוקס|fox|גולף|רנואר|טרמינל|נעלי|אדידס|nike|נייק|shein|שיין|מספר|קוסמטיק|ספא|לק |מניקור|terminal x|אמריקן איגל|מנגו/i,"ביגוד וטיפוח"],
+ [/חברת החשמל|חשמל|תאגיד מים|מי |מים|ארנונה|עירית|עיריית|מועצה|גז|סופרגז|אמישראגז|פזגז|ועד בית/i,"חשבונות הבית"],
+ [/איקאה|ikea|ace|הום סנטר|homecenter|ניצת הדובדבן|מחסני חשמל|שקם אלקטריק|ksp|באג|ivory|אייבורי|פוקס הום|גולף אנד קו|טמבור|כלי בית/i,"קניות לבית"],
+ [/גן |צהרון|בית ספר|חוג|צעצוע|טויס|שילב|מתנ"ס|קייטנה|אוניברסיט|מכללה|שכר לימוד/i,"ילדים וחינוך"],
+ [/aliexpress|עלי אקספרס|amazon|אמזון|ebay|paypal|פייפאל|temu|טמו/i,"אונליין ושונות"],
+ [/עמלה|דמי כרטיס|ריבית|מס הכנסה|ביטוח לאומי|מע"מ/i,"עמלות ומסים"],
+ [/שכירות|שכר דירה|משכנתא|משכנתה/i,"דיור"]
+];
+const KW_INC=[[/משכורת|שכר |salary/i,"משכורת"],[/ביטוח לאומי|קצבה|החזר|זיכוי/i,"קצבאות והחזרים"],[/ריבית|דיבידנד|פיקדון/i,"השקעות וריבית"],[/ביט|פייבוקס|paybox/i,"אחר"]];
+const PAL=["#3d63c9","#2a9d8f","#e09a2d","#c94f36","#8a5cc2","#3a8fd1","#d0628f","#6f8f2f","#a8733d","#5f7480","#d9682f","#3c9c6c","#7a6ad8","#b5864a","#4f8a9c"];
+const fmt=new Intl.NumberFormat('he-IL',{style:'currency',currency:'ILS',maximumFractionDigits:0});
+const fmt2=new Intl.NumberFormat('he-IL',{style:'currency',currency:'ILS',maximumFractionDigits:2});
+const money=v=>(v<0?'−':'')+fmt.format(Math.abs(Math.round(v)));
+const money2=v=>(v<0?'−':'')+fmt2.format(Math.abs(v));
+const monthFmt=new Intl.DateTimeFormat('he-IL',{month:'long',year:'numeric'});
+const shortM=new Intl.DateTimeFormat('he-IL',{month:'short'});
+const dayFmt=new Intl.DateTimeFormat('he-IL',{weekday:'long',day:'numeric',month:'long'});
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>ymd(new Date());
+const mkey=d=>(d||'').slice(0,7);
+const addM=(k,n)=>{const [y,m]=k.split('-').map(Number);const d=new Date(y,m-1+n,1);return d.getFullYear()+'-'+pad(d.getMonth()+1)};
+const mName=k=>{const [y,m]=k.split('-').map(Number);return monthFmt.format(new Date(y,m-1,1))};
+const mShort=k=>{const [y,m]=k.split('-').map(Number);return shortM.format(new Date(y,m-1,1))};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const normM=s=>String(s||'').toLowerCase().replace(/\d{3,}/g,'').replace(/[*"'׳״.,\-_/\\]+/g,' ').replace(/\s+/g,' ').trim();
+
+let fbUser=null;
+const S={tx:[],cats:JSON.parse(JSON.stringify(DEF_CATS)),budgets:{},rules:{},imports:[],mode:'pending',page:'overview',month:mkey(today()),type:'expense',cat:null,editing:null};
+let api=null;
+
+/* ================= storage ================= */
+const LS='kis-v1';
+const lsGet=()=>{try{return JSON.parse(localStorage.getItem(LS))||{}}catch(e){return{}}};
+const lsSet=()=>{try{localStorage.setItem(LS,JSON.stringify({tx:S.tx,cats:S.cats,budgets:S.budgets,rules:S.rules,imports:S.imports}))}catch(e){}};
+const rid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function settingsObj(){return{expense:S.cats.expense,income:S.cats.income,budgets:S.budgets,rules:S.rules}}
+function useLocal(){
+  S.mode='local';const d=lsGet();S.tx=d.tx||[];if(d.cats)S.cats=d.cats;S.budgets=d.budgets||{};S.rules=d.rules||{};S.imports=d.imports||[];
+  api={
+    add:async t=>{S.tx.push({...t,id:rid('l')});lsSet();render()},
+    addMany:async(list,onp)=>{list.forEach(t=>S.tx.push({...t,id:rid('l')}));lsSet();onp&&onp(list.length);render()},
+    update:async(id,t)=>{S.tx=S.tx.map(x=>x.id===id?{...t,id}:x);lsSet();render()},
+    remove:async id=>{S.tx=S.tx.filter(x=>x.id!==id);lsSet();render()},
+    saveSettings:async()=>{lsSet()},
+    addImport:async imp=>{const id=rid('i');S.imports.push({...imp,id});lsSet();return id},
+    removeImport:async id=>{S.tx=S.tx.filter(t=>t.importId!==id);S.imports=S.imports.filter(i=>i.id!==id);lsSet();render()}
+  };
+}
+async function connect(user){
+  const fs=firebase.firestore();const base='users/'+user.uid;
+  const col=fs.collection(base+'/tx'), sdoc=fs.doc(base+'/meta/settings'), icol=fs.collection(base+'/imports');
+  api={
+    add:t=>col.add(t),
+    addMany:async(list,onp)=>{for(let i=0;i<list.length;i+=400){const b=fs.batch();list.slice(i,i+400).forEach(t=>b.set(col.doc(),t));await b.commit();onp&&onp(Math.min(list.length,i+400))}},
+    update:(tid,t)=>col.doc(tid).set(t),
+    remove:tid=>col.doc(tid).delete(),
+    saveSettings:()=>sdoc.set(settingsObj()),
+    addImport:async imp=>(await icol.add(imp)).id,
+    removeImport:async iid=>{const ids=S.tx.filter(t=>t.importId===iid).map(t=>t.id);for(let i=0;i<ids.length;i+=400){const b=fs.batch();ids.slice(i,i+400).forEach(x=>b.delete(col.doc(x)));await b.commit()}await icol.doc(iid).delete()}
+  };
+  unsubs.push(col.onSnapshot(s=>{S.mode='cloud';S.tx=s.docs.map(d=>({...d.data(),id:d.id}));render()},e=>toast('לא הצלחתי לטעון את הנתונים: '+e.code)));
+  unsubs.push(sdoc.onSnapshot(s=>{if(s.exists){const d=s.data()||{};if(Array.isArray(d.expense)&&Array.isArray(d.income))S.cats={expense:d.expense,income:d.income};S.budgets=d.budgets||{};S.rules=d.rules||{};render()}},()=>{}));
+  unsubs.push(icol.onSnapshot(s=>{S.imports=s.docs.map(d=>({...d.data(),id:d.id}));render()},()=>{}));
+}
+let unsubs=[];
+async function getApi(){for(let i=0;i<60&&!api;i++)await new Promise(r=>setTimeout(r,200));return api}
+function getSample(){return Promise.resolve(null)}
+
+/* ================= demo data ================= */
+let demoCache=null;
+function demoTx(){if(demoCache)return demoCache;const out=[];let n=0;const cur=mkey(today());
+  const add=(k,day,type,amount,category,note,method,fixed)=>out.push({id:'d'+(n++),type,amount,category,date:k+'-'+pad(Math.min(day,28)),note,method,fixed:!!fixed,source:'demo'});
+  for(let i=11;i>=0;i--){const k=addM(cur,-i);const w=1+((i*7)%5)/20;
+    add(k,1,'income',11800,'משכורת','משכורת חודשית','העברה בנקאית',true);
+    if(i%2===0)add(k,12,'income',1400+i*120,'עבודה עצמאית','פרויקט עיצוב','העברה / ביט');
+    add(k,1,'expense',4300,'דיור','שכירות','הוראת קבע',true);
+    add(k,3,'expense',89,'תקשורת ומנויים','סלקום','כרטיס אשראי',true);
+    add(k,4,'expense',55,'תקשורת ומנויים','נטפליקס','כרטיס אשראי',true);
+    add(k,4,'expense',40,'תקשורת ומנויים','ספוטיפיי','כרטיס אשראי',true);
+    add(k,5,'expense',129,'בריאות','הולמס פלייס','כרטיס אשראי',true);
+    add(k,9,'expense',Math.round(380*w),'חשבונות הבית','חברת החשמל','הוראת קבע',true);
+    add(k,6,'expense',Math.round(640*w),'מזון וסופר','שופרסל דיל','כרטיס אשראי');
+    add(k,13,'expense',Math.round(520*w),'מזון וסופר','רמי לוי','כרטיס אשראי');
+    add(k,20,'expense',Math.round(590*w),'מזון וסופר','שופרסל דיל','כרטיס אשראי');
+    add(k,8,'expense',Math.round(240*w),'תחבורה ודלק','פז','כרטיס אשראי');
+    add(k,22,'expense',Math.round(260*w),'תחבורה ודלק','סונול','כרטיס אשראי');
+    add(k,11,'expense',Math.round(180+((11-i)%6)*40),'מסעדות ובילויים','מסעדה','כרטיס אשראי');
+    add(k,18,'expense',Math.round(95+((11-i)%6)*15),'מסעדות ובילויים','וולט','כרטיס אשראי');
+    add(k,25,'expense',Math.round(140+((11-i)%6)*30),'מסעדות ובילויים','ארומה','כרטיס אשראי');
+    add(k,15,'expense',Math.round(350*w),'ביגוד וטיפוח','קסטרו','כרטיס אשראי');
+    add(k,16,'expense',210,'ביטוחים','הראל ביטוח','הוראת קבע',true);
+    add(k,27,'expense',Math.round(160*w),'קניות לבית','איקאה','כרטיס אשראי');
+    add(k,19,'expense',Math.round(120*w),'אונליין ושונות','AliExpress','כרטיס אשראי');
+  }
+  demoCache=out;return out}
+const isDemo=()=>!S.tx.length;
+const data=()=>isDemo()?demoTx():S.tx;
+
+/* ================= helpers ================= */
+function catColor(type,name){const list=S.cats[type]||[];let i=list.indexOf(name);if(i<0){i=0;for(const c of String(name))i=(i*31+c.charCodeAt(0))>>>0}return PAL[(type==='income'?i+3:i)%PAL.length]}
+const amt=t=>Number(t.amount||0);
+function sumBy(list,keyFn){const m={};for(const t of list){const k=typeof keyFn==='function'?keyFn(t):t[keyFn];if(k==null||k==='')continue;m[k]=(m[k]||0)+amt(t)}return Object.entries(m).sort((a,b)=>b[1]-a[1])}
+const inMonth=(list,k)=>list.filter(t=>mkey(t.date)===k);
+const inMonths=(list,ks)=>{const s=new Set(ks);return list.filter(t=>s.has(mkey(t.date)))};
+const total=(list,type)=>list.filter(t=>t.type===type).reduce((s,t)=>s+amt(t),0);
+const lastKs=(k,n)=>{const a=[];for(let i=n-1;i>=0;i--)a.push(addM(k,-i));return a};
+let toastT;function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2600)}
+function barsHTML(rows,type,tot,colorFn){if(!rows.length)return `<div class="muted">אין נתונים לתקופה</div>`;
+  const max=Math.max(...rows.map(r=>Math.abs(r[1])))||1;
+  return rows.map(([n,v])=>{const c=colorFn?colorFn(n):catColor(type,n);return `<div class="bar"><span class="lb"><i style="background:${c}"></i>${esc(n)}</span><span class="tr"><span class="fl" style="width:${Math.max(2,Math.abs(v)/max*100)}%;background:${c}"></span></span><span class="v num">${money(v)} <span class="p">${tot?Math.round(v/tot*100)+'%':''}</span></span></div>`}).join('')}
+function txRow(t){const sign=t.type==='income'?'+':'−';
+  const sub=[t.note&&t.note!==t.category?t.note:'',t.method].filter(Boolean).join(' · ');
+  return `<button type="button" class="tx" data-id="${esc(t.id)}"><span class="ic" style="background:${catColor(t.type,t.category)}"></span>
+  <span class="t"><b>${esc(t.note||t.category)}${t.fixed?'<span class="tag">קבוע</span>':''}${t.source==='import'?'<span class="tag">מיובא</span>':''}</b><small>${esc(t.note?t.category:'')}${t.note&&t.method?' · ':''}${esc(t.method||'')}</small></span>
+  <span class="a num ${t.type==='income'?'inc':''}">${amt(t)<0?'+':sign}${fmt2.format(Math.abs(amt(t)))}</span></button>`}
+function bindRows(root,list){root.querySelectorAll('.tx').forEach(b=>b.onclick=()=>{const t=list.find(x=>String(x.id)===b.dataset.id);if(t)editTx(t)})}
+const sortTx=l=>[...l].sort((a,b)=>(b.date||'').localeCompare(a.date||'')||(b.createdAt||'').localeCompare(a.createdAt||''));
+
+/* ================= routing ================= */
+const PAGES={overview:'לוח בקרה',add:'הוספת תנועה',transactions:'תנועות',import:'ייבוא פירוט',reports:'דוחות וניתוח',budget:'תקציב',insights:'תובנות וייעוץ',prefs:'הגדרות'};
+function route(){let p=(location.hash||'').slice(1);if(!PAGES[p])p='overview';S.page=p;
+  for(const k in PAGES)$('#p-'+k).hidden=k!==p;
+  $$('#nav a').forEach(a=>{if(a.dataset.p===p)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  document.body.className=document.body.className.replace(/\bpage-\S+/g,'').trim()+' page-'+p;
+  document.body.classList.remove('menu');$('#topTitle').textContent=PAGES[p];
+  if(p==='add'&&!S.editing)setTimeout(()=>{try{if(matchMedia('(min-width:900px)').matches)$('#amt').focus()}catch(e){}},50);
+  window.scrollTo(0,0);render()}
+window.addEventListener('hashchange',route);
+$('#menuBtn').onclick=()=>document.body.classList.add('menu');
+$('#scrim').onclick=()=>document.body.classList.remove('menu');
+$$('[data-month]').forEach(el=>{el.innerHTML=`<button type="button" data-d="-1" aria-label="חודש קודם">›</button><b class="mlabel"></b><button type="button" data-d="1" aria-label="חודש הבא">‹</button>`;
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{S.month=addM(S.month,Number(b.dataset.d));render()})});
+
+/* ================= add / edit ================= */
+function setType(type){S.type=type;$('#tExp').setAttribute('aria-pressed',type==='expense');$('#tInc').setAttribute('aria-pressed',type==='income');
+  if(!S.cats[type].includes(S.cat))S.cat=null;
+  $('#catLbl').textContent=type==='expense'?'על מה?':'מאיפה?';
+  $('#fixedLbl').textContent=type==='expense'?'הוצאה קבועה שחוזרת כל חודש':'הכנסה קבועה שחוזרת כל חודש';
+  if(!S.editing)$('#method').value=type==='expense'?'כרטיס אשראי':'העברה בנקאית';renderChips()}
+function renderChips(){$('#catChips').innerHTML=S.cats[S.type].map(c=>`<button type="button" class="chip" aria-pressed="${c===S.cat}" data-c="${esc(c)}"><i style="background:${catColor(S.type,c)}"></i>${esc(c)}</button>`).join('')}
+$('#catChips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;S.cat=b.dataset.c;renderChips()});
+$('#tExp').onclick=()=>setType('expense');$('#tInc').onclick=()=>setType('income');
+$('#note').addEventListener('change',()=>{if(S.cat||S.editing)return;const c=guessCat($('#note').value,S.type);if(c&&S.cats[S.type].includes(c)){S.cat=c;renderChips()}});
+let delArm=false,delT;
+function resetForm(){S.editing=null;$('#amt').value='';$('#note').value='';$('#fixed').checked=false;$('#date').value=today();$('#addTitle').textContent='הוספת תנועה';
+  $('#saveBtn').textContent='שמירה';$('#cancelEdit').hidden=true;$('#delBtn').hidden=true;$('#delBtn').textContent='מחיקה';delArm=false;S.cat=null;setType(S.type)}
+function editTx(t){if(t.source==='demo'){toast('זו תנועת דוגמה. הוסיפי תנועה משלך');return}
+  S.editing=t.id;S.editingObj=t;S.type=t.type;setType(t.type);S.cat=t.category;renderChips();$('#amt').value=t.amount;$('#date').value=t.date;$('#note').value=t.note||'';$('#fixed').checked=!!t.fixed;$('#method').value=t.method||'';
+  $('#addTitle').textContent='עריכת תנועה';$('#saveBtn').textContent='עדכון';$('#cancelEdit').hidden=false;$('#delBtn').hidden=false;
+  if(location.hash!=='#add')location.hash='add';else route()}
+$('#cancelEdit').onclick=()=>{resetForm();history.length>1?history.back():location.hash='transactions'};
+$('#delBtn').onclick=async()=>{if(!delArm){delArm=true;$('#delBtn').textContent='לחצי שוב למחיקה';clearTimeout(delT);delT=setTimeout(()=>{delArm=false;$('#delBtn').textContent='מחיקה'},3000);return}
+  const a=await getApi();try{await a.remove(S.editing);toast('נמחק');resetForm();location.hash='transactions'}catch(e){toast('המחיקה לא הצליחה, נסי שוב')}};
+$('#form').addEventListener('submit',async e=>{e.preventDefault();
+  const v=parseFloat(String($('#amt').value).replace(/[^\d.]/g,''));
+  if(!(v>0)){toast('חסר סכום');$('#amt').focus();return}
+  if(!S.cat){toast('בחרי קטגוריה');return}
+  const base=S.editing?{...S.editingObj}:{source:'manual',createdAt:new Date().toISOString()};delete base.id;
+  const t={...base,type:S.type,amount:Math.round(v*100)/100,category:S.cat,date:$('#date').value||today(),note:$('#note').value.trim(),method:$('#method').value.trim(),fixed:$('#fixed').checked};
+  $('#saveBtn').disabled=true;const a=await getApi();
+  try{const wasEdit=!!S.editing;if(wasEdit){await a.update(S.editing,t);toast('עודכן')}else{await a.add(t);toast((t.type==='expense'?'הוצאה של ':'הכנסה של ')+fmt2.format(t.amount)+' נשמרה')}
+    if(t.note&&S.cat){const k=normM(t.note);if(k&&S.rules[k]!==S.cat&&guessCat(t.note,t.type)!==S.cat){S.rules[k]=S.cat;a.saveSettings().catch(()=>{})}}
+    resetForm();if(wasEdit)location.hash='transactions'}
+  catch(err){toast('השמירה לא הצליחה, נסי שוב')}finally{$('#saveBtn').disabled=false}
+});
+
+/* ================= overview ================= */
+function kpiHTML(inc,exp,prevExp,extra){const bal=inc-exp;const rate=inc>0?Math.round(bal/inc*100):null;const diff=prevExp>0?Math.round((exp-prevExp)/prevExp*100):null;
+  return `<div class="kpi inc"><small>הכנסות</small><b class="num">${money(inc)}</b><em>&nbsp;</em></div>
+  <div class="kpi exp"><small>הוצאות</small><b class="num">${money(exp)}</b><em>${diff===null?'&nbsp;':(diff>0?'▲ ':'▼ ')+Math.abs(diff)+'% מהתקופה הקודמת'}</em></div>
+  <div class="kpi"><small>נשאר</small><b class="num" style="color:${bal>=0?'var(--inc)':'var(--exp)'}">${money(bal)}</b><em>${rate===null?'&nbsp;':'שיעור חיסכון '+rate+'%'}</em></div>
+  ${extra||''}`}
+function renderOverview(){const all=data(),l=inMonth(all,S.month),prev=inMonth(all,addM(S.month,-1));
+  const inc=total(l,'income'),exp=total(l,'expense');
+  const bt=Object.values(S.budgets).reduce((s,v)=>s+Number(v||0),0);
+  $('#ovSub').textContent=`${l.length} תנועות ב${mName(S.month)}`;
+  $('#ovKpis').innerHTML=kpiHTML(inc,exp,total(prev,'expense'),`<div class="kpi"><small>${bt?'נשאר בתקציב':'הוצאה יומית ממוצעת'}</small><b class="num">${bt?money(bt-exp):money(exp/daysIn(S.month))}</b><em>${bt?'מתוך '+money(bt):'בחודש הזה'}</em></div>`);
+  const cats=sumBy(l.filter(t=>t.type==='expense'),'category');
+  $('#ovExp').innerHTML=barsHTML(cats.slice(0,7),'expense',exp);
+  $('#ovInc').innerHTML=barsHTML(sumBy(l.filter(t=>t.type==='income'),'category'),'income',inc);
+  const rec=sortTx(l).slice(0,6);$('#ovRecent').innerHTML=rec.length?rec.map(txRow).join(''):'<div class="empty">אין תנועות בחודש הזה</div>';bindRows($('#ovRecent'),rec);
+  const bl=Object.entries(S.budgets).filter(([c,v])=>Number(v)>0).map(([c,v])=>({c,b:Number(v),s:total(l.filter(t=>t.category===c),'expense')})).sort((a,b)=>b.s/b.b-a.s/a.b);
+  $('#ovBud').innerHTML=bl.length?`<div class="bars">${bl.slice(0,6).map(budMini).join('')}</div>`:`<div class="empty">עוד לא הגדרת תקציב.<br><a href="#budget">הגדרת תקציב חודשי</a> תראה כאן כמה נשאר בכל קטגוריה.</div>`}
+function daysIn(k){const [y,m]=k.split('-').map(Number);const dim=new Date(y,m,0).getDate();return k===mkey(today())?new Date().getDate():dim}
+function budState(s,b){const r=s/b;return r>1?'bad':r>.85?'warn':'ok'}
+function budMini(x){const st=budState(x.s,x.b);const col=st==='bad'?'var(--exp)':st==='warn'?'var(--warn)':'var(--inc)';
+  return `<div class="bar"><span class="lb"><i style="background:${catColor('expense',x.c)}"></i>${esc(x.c)}</span><span class="tr"><span class="fl" style="width:${Math.min(100,x.s/x.b*100)}%;background:${col}"></span></span><span class="v num">${money(x.s)} <span class="p">/ ${money(x.b)}</span></span></div>`}
+
+/* ================= transactions ================= */
+['#fq','#ftype','#fcat','#fsrc'].forEach(s=>$(s).addEventListener('input',()=>renderTx()));
+function renderTx(){
+  const fc=$('#fcat'),cur=fc.value;fc.innerHTML='<option value="">הכל</option>'+[...S.cats.expense,...S.cats.income.filter(c=>!S.cats.expense.includes(c))].map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('');
+  const q=$('#fq').value.trim().toLowerCase(),ty=$('#ftype').value,ca=fc.value,src=$('#fsrc').value;
+  let l=inMonth(S.tx,S.month).filter(t=>(!ty||t.type===ty)&&(!ca||t.category===ca)&&(!src||(src==='import'?t.source==='import':t.source!=='import'))&&(!q||[t.note,t.category,t.method].join(' ').toLowerCase().includes(q)));
+  $('#txSub').textContent=`${mName(S.month)} · ${l.length} תנועות · הכנסות ${money(total(l,'income'))} · הוצאות ${money(total(l,'expense'))}`;
+  const el=$('#txList');
+  if(!l.length){el.innerHTML=`<div class="empty">${S.tx.length?'אין תנועות שמתאימות לסינון בחודש הזה':'עוד אין תנועות. <a href="#add">הוסיפי תנועה</a> או <a href="#import">ייבאי פירוט אשראי</a>.'}</div>`;return}
+  const g={};for(const t of sortTx(l))(g[t.date]=g[t.date]||[]).push(t);
+  el.innerHTML=Object.entries(g).map(([d,ts])=>{const [y,m,dd]=d.split('-').map(Number);const net=total(ts,'income')-total(ts,'expense');
+    return `<div class="dayh"><span>${dayFmt.format(new Date(y,m-1,dd))}</span><span class="num">${net>=0?'+':'−'}${fmt.format(Math.abs(Math.round(net)))}</span></div>${ts.map(txRow).join('')}`}).join('');
+  bindRows(el,l)}
+
+/* ================= import ================= */
+let IMP=null; // {name, rows:[{date,merchant,amount,type,category,dup,sel}]}
+const drop=$('#drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files&&e.dataTransfer.files[0];if(f)handleFile(f)});
+$('#file').addEventListener('change',e=>{const f=e.target.files[0];if(f)handleFile(f);e.target.value=''});
+function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){res();return}const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load'));document.head.appendChild(s)})}
+function impStatus(title,status,pct){$('#impWork').hidden=false;$('#impTitle').textContent=title;$('#impStatus').textContent=status||'';$('#impProg').hidden=pct==null;if(pct!=null)$('#impProg span').style.width=pct+'%'}
+function impReset(){IMP=null;$('#impWork').hidden=true;$('#impOpts').hidden=true;$('#impTableWrap').hidden=true;$('#impActions').hidden=true;$('#impMeta').textContent=''}
+$('#impCancel').onclick=impReset;
+
+function parseDate(v){if(v==null||v==='')return null;
+  if(v instanceof Date&&!isNaN(v))return ymd(v);
+  if(typeof v==='number'&&v>20000&&v<80000){const d=new Date(Math.round((v-25569)*864e5));return ymd(new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()))}
+  const s=String(v).trim();let m;
+  if(m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))return m[1]+'-'+pad(m[2])+'-'+pad(m[3]);
+  if(m=s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/)){let y=Number(m[3]);if(y<100)y+=2000;const mo=Number(m[2]),d=Number(m[1]);if(mo<1||mo>12||d<1||d>31)return null;return y+'-'+pad(mo)+'-'+pad(d)}
+  return null}
+function parseAmt(v){if(v==null||v==='')return null;if(typeof v==='number')return v;let s=String(v).replace(/[₪$€\s,]/g,'').replace(/[^\d.\-]/g,'');if(!s)return null;let neg=false;if(s.endsWith('-')){neg=true;s=s.slice(0,-1)}if(s.startsWith('-')){neg=!neg;s=s.slice(1)}const n=parseFloat(s);return isNaN(n)?null:(neg?-n:n)}
+function findCol(hdr,res){for(const re of res){const i=hdr.findIndex(h=>re.test(h));if(i>=0)return i}return -1}
+function parseRows(rows){/* rows: array of arrays from a sheet */
+  const out=[];let map=null;
+  for(const r of rows){const cells=r.map(c=>c==null?'':(c instanceof Date?c:String(c).trim()));
+    const txt=cells.map(c=>c instanceof Date?'':c);
+    const hasDateH=txt.some(c=>/תאריך/.test(c)), hasAmtH=txt.some(c=>/סכום|חיוב|חובה|זכות|amount/i.test(c));
+    if(hasDateH&&hasAmtH&&txt.filter(Boolean).length>=3){
+      map={date:findCol(txt,[/תאריך עסקה|תאריך רכישה|תאריך ביצוע/,/^תאריך$/,/תאריך(?!.*חיוב)/,/תאריך/]),
+        merchant:findCol(txt,[/שם בית ה?עסק|בית ה?עסק|שם העסק/,/תיאור|פירוט|הפעולה|תנועה|אסמכתא תיאור/]),
+        amount:findCol(txt,[/סכום חיוב|סכום לחיוב|חיוב בש|סכום החיוב/,/סכום בש"ח|סכום ב₪/,/^סכום$/,/סכום(?! עסקה מקורי)/,/סכום/]),
+        debit:findCol(txt,[/^חובה$|חובה/]),credit:findCol(txt,[/^זכות$|זכות/]),
+        kind:findCol(txt,[/סוג עסקה|סוג העסקה/]),notes:findCol(txt,[/הערות|פירוט נוסף/])};
+      if(map.debit>=0&&map.credit>=0&&map.debit===map.amount)map.amount=-1;
+      continue}
+    if(!map||map.date<0)continue;
+    const date=parseDate(r[map.date]);if(!date)continue;
+    const merchant=String(map.merchant>=0?r[map.merchant]??'':'').trim();
+    let amount=null,type='expense';
+    if(map.debit>=0&&map.credit>=0&&(map.amount<0)){const d=parseAmt(r[map.debit]),c=parseAmt(r[map.credit]);if(d){amount=Math.abs(d)}else if(c){amount=Math.abs(c);type='income'}}
+    else{amount=parseAmt(r[map.amount])}
+    if(amount==null||amount===0)continue;
+    const note=map.notes>=0?String(r[map.notes]??'').trim():'';
+    out.push({date,merchant:merchant||'ללא שם',amount,type,extra:note})}
+  return out}
+async function parseSheetFile(f){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  const buf=await f.arrayBuffer();
+  let wb;if(/\.csv$/i.test(f.name)){let text=new TextDecoder('utf-8').decode(buf);if(/�/.test(text))text=new TextDecoder('windows-1255').decode(buf);wb=XLSX.read(text,{type:'string',cellDates:true,raw:false})}
+  else wb=XLSX.read(buf,{type:'array',cellDates:true});
+  let rows=[],text='';
+  for(const sn of wb.SheetNames){const ws=wb.Sheets[sn];const arr=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});rows.push(...parseRows(arr));text+=`--- ${sn} ---\n`+XLSX.utils.sheet_to_csv(ws,{blankrows:false})+'\n'}
+  return{rows,text}}
+async function pdfText(f){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js');
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer()),isEvalSupported:false}).promise;
+  let out='';for(let i=1;i<=Math.min(pdf.numPages,30);i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();
+    const lines={};for(const it of c.items){const y=Math.round(it.transform[5]);(lines[y]=lines[y]||[]).push({x:it.transform[4],s:it.str})}
+    out+=Object.keys(lines).sort((a,b)=>b-a).map(y=>lines[y].sort((a,b)=>b.x-a.x).map(o=>o.s).join(' ')).join('\n')+'\n'}
+  return out}
+function textExtract(text){/* line-based: a date + one or more amounts on the same line */
+  const out=[];const year=new Date().getFullYear();
+  for(const line of text.split('\n')){
+    const dm=line.match(/(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?/);if(!dm)continue;
+    const am=[...line.matchAll(/-?\d{1,3}(?:,\d{3})*\.\d{2}-?/g)].map(m=>m[0]);if(!am.length)continue;
+    const date=parseDate(dm[1]+'/'+dm[2]+'/'+(dm[3]||year));if(!date)continue;
+    const amount=parseAmt(am[am.length-1]);if(!amount)continue;
+    let merchant=line.replace(dm[0],'');am.forEach(a=>merchant=merchant.replace(a,''));
+    merchant=merchant.replace(/\d{1,2}[\/.]\d{1,2}([\/.]\d{2,4})?/g,'').replace(/₪|ש"ח|\$|€/g,'').replace(/\s+/g,' ').trim();
+    if(/סה"כ|סה״כ|סך הכל|יתרה|total/i.test(merchant))continue;
+    out.push({date,merchant:merchant||'ללא שם',amount,type:'expense'})}
+  return out}
+async function claudeExtract(text,images){
+  if(images)throw new Error('קריאת צילומי מסך עוד לא זמינה באתר. העלי קובץ Excel או CSV מאתר חברת האשראי, או שלחי את הקובץ ל-Claude בצ׳אט.');
+  const r=textExtract(text||'');
+  if(!r.length)throw new Error('לא הצלחתי לזהות עסקאות בקובץ הזה. הכי אמין: להוריד מאתר חברת האשראי קובץ Excel. אפשר גם לשלוח את הקובץ ל-Claude בצ׳אט והוא ימיר אותו.');
+  return r}
+function guessCat(merchant,type){const k=normM(merchant);if(!k)return null;
+  if(S.rules[k])return S.rules[k];
+  for(const rk in S.rules){if(rk.length>=4&&(k.includes(rk)||rk.includes(k)))return S.rules[rk]}
+  for(const [re,c] of (type==='income'?KW_INC:KW))if(re.test(merchant)&&S.cats[type].includes(c))return c;
+  return null}
+async function handleFile(f){
+  if(isDemoBusy())return;impReset();IMP={name:f.name,rows:[]};
+  impStatus('קורא את '+f.name,'פותח את הקובץ…',10);
+  try{let rows=[];
+    if(/\.(xlsx|xls|csv)$/i.test(f.name)){const r=await parseSheetFile(f);rows=r.rows;
+      if(rows.length<1){impStatus('קורא את '+f.name,'מנסה לזהות את מבנה הקובץ…',35);rows=await claudeExtract(r.text)}}
+    else if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){impStatus('קורא את '+f.name,'מחלץ טקסט מה-PDF…',25);const t=await pdfText(f);
+      if(t.replace(/\s/g,'').length<40)throw new Error('ה-PDF הזה סרוק כתמונה ואין בו טקסט. הורידי מאתר חברת האשראי קובץ Excel, או שלחי את הקובץ ל-Claude בצ׳אט.');
+      impStatus('קורא את '+f.name,'מזהה את העסקאות…',45);rows=await claudeExtract(t)}
+    else if(/^image\//.test(f.type)){const s=await getSample();const lim=s&&await s.limits().catch(()=>null);
+      if(!lim||!lim.images)throw new Error('קריאת תמונות זמינה רק כשהאתר פתוח מתוך claude.ai.');
+      impStatus('קורא את '+f.name,'Claude קורא את התמונה…',40);rows=await claudeExtract(null,[f])}
+    else throw new Error('סוג קובץ לא נתמך. העלי Excel, ‏CSV, ‏PDF או תמונה.');
+    if(!rows.length)throw new Error('לא מצאתי עסקאות בקובץ.');
+    IMP.rows=rows.map(r=>({...r,category:guessCat(r.merchant,r.type),sel:true}));
+    markDups();
+    const unknown=[...new Set(IMP.rows.filter(r=>!r.category).map(r=>r.merchant))];
+    if(unknown.length){impStatus('נמצאו '+rows.length+' עסקאות','מסווג '+unknown.length+' בתי עסק לקטגוריות…',70);await claudeCategorize(unknown)}
+    IMP.rows.forEach(r=>{if(!r.category)r.category='אחר';if(!S.cats[r.type].includes(r.category))r.category=S.cats[r.type].includes('אחר')?'אחר':S.cats[r.type][0]});
+    showPreview()}
+  catch(e){impStatus('הייבוא לא הצליח',(e&&e.message&&/[א-ת]/.test(e.message))?e.message:(e&&e.code==='not_granted'?'לא ניתן אישור לשימוש ב-Claude. אפשר לאשר דרך תפריט ההרשאות של הדף.':'לא הצלחתי לקרוא את הקובץ. נסי קובץ Excel מאתר חברת האשראי.'),null)}}
+function isDemoBusy(){return false}
+async function claudeCategorize(merchants){const s=await getSample();if(!s)return;
+  try{const r=await s.json(`סווגי כל בית עסק ישראלי לאחת מהקטגוריות הבאות בלבד: ${JSON.stringify(S.cats.expense)}.
+החזירי רק אובייקט JSON שבו המפתח הוא שם בית העסק בדיוק כפי שקיבלת, והערך הוא שם הקטגוריה. אם אינך יודעת, "אחר".
+בתי העסק: ${JSON.stringify(merchants.slice(0,200))}`,{modelTier:'quick'});
+    if(r&&typeof r==='object')IMP.rows.forEach(x=>{if(!x.category&&x.type==='expense'&&r[x.merchant]&&S.cats.expense.includes(r[x.merchant]))x.category=r[x.merchant]})}catch(e){}}
+function markDups(){const keys=new Set(S.tx.map(t=>t.date+'|'+Math.round(Math.abs(amt(t))*100)+'|'+normM(t.note)));
+  IMP.rows.forEach(r=>{r.dup=keys.has(r.date+'|'+Math.round(Math.abs(r.amount)*100)+'|'+normM(r.merchant));if(r.dup)r.sel=false})}
+function showPreview(){const rows=IMP.rows;const dups=rows.filter(r=>r.dup).length;
+  const dates=rows.map(r=>r.date).sort();
+  $('#impTitle').textContent=`נמצאו ${rows.length} עסקאות`;
+  $('#impMeta').textContent=`${dates[0].split('-').reverse().join('/')} עד ${dates[dates.length-1].split('-').reverse().join('/')}`;
+  $('#impStatus').textContent=(dups?`${dups} עסקאות כבר קיימות אצלך ולא סומנו. `:'')+'בדקי את הקטגוריות. שינוי קטגוריה לבית עסק מעדכן את כל העסקאות שלו, והאתר יזכור אותו לפעם הבאה.';
+  $('#impProg').hidden=true;$('#impOpts').hidden=false;$('#impTableWrap').hidden=false;$('#impActions').hidden=false;
+  $('#impCard').value=$('#impCard').value||guessCardName(IMP.name);
+  $('#impBulk').innerHTML='<option value="">שינוי קטגוריה לכל המסומנות…</option>'+S.cats.expense.map(c=>`<option>${esc(c)}</option>`).join('');
+  renderImpTable()}
+function guessCardName(n){const m=n.match(/max|מקס|cal|כאל|isracard|ישראכרט|amex|אמריקן|leumi|לאומי|hapoalim|פועלים|discount|דיסקונט|mizrahi|מזרחי/i);return m?m[0]:''}
+function renderImpTable(){
+  $('#impBody').innerHTML=IMP.rows.map((r,i)=>`<tr class="${r.dup?'dup':''}"><td><input type="checkbox" data-i="${i}" class="isel" ${r.sel?'checked':''} aria-label="בחירה"></td>
+   <td class="num">${r.date.split('-').reverse().join('/')}</td><td class="m">${esc(r.merchant)}${r.extra?`<div class="muted" style="font-size:12px">${esc(r.extra)}</div>`:''}</td>
+   <td class="amt num" style="color:${r.type==='income'||r.amount<0?'var(--inc)':'inherit'}">${r.type==='income'||r.amount<0?'+':''}${fmt2.format(Math.abs(r.amount))}</td>
+   <td><select data-i="${i}" class="icat">${S.cats[r.type].map(c=>`<option ${c===r.category?'selected':''}>${esc(c)}</option>`).join('')}</select></td>
+   <td>${r.dup?'<span class="pill warn">קיים</span>':r.type==='income'?'<span class="pill ok">הכנסה</span>':r.amount<0?'<span class="pill ok">זיכוי</span>':''}</td></tr>`).join('');
+  const sel=IMP.rows.filter(r=>r.sel);$('#impSave').textContent=`שמירת ${sel.length} עסקאות (${money(sel.reduce((s,r)=>s+(r.type==='expense'?r.amount:0),0))})`;$('#impSave').disabled=!sel.length;
+  $('#impAll').checked=sel.length===IMP.rows.length}
+$('#impBody').addEventListener('change',e=>{const i=Number(e.target.dataset.i);if(isNaN(i))return;
+  if(e.target.classList.contains('isel')){IMP.rows[i].sel=e.target.checked;renderImpTable()}
+  if(e.target.classList.contains('icat')){const r=IMP.rows[i];const c=e.target.value;const k=normM(r.merchant);IMP.rows.forEach(x=>{if(normM(x.merchant)===k&&x.type===r.type)x.category=c});if(k&&r.type==='expense')IMP.learn=Object.assign(IMP.learn||{},{[k]:c});renderImpTable()}});
+$('#impAll').addEventListener('change',e=>{IMP.rows.forEach(r=>r.sel=e.target.checked);renderImpTable()});
+$('#impBulk').addEventListener('change',e=>{const c=e.target.value;if(!c)return;IMP.rows.forEach(r=>{if(r.sel&&r.type==='expense')r.category=c});e.target.value='';renderImpTable()});
+$('#impSave').onclick=async()=>{const sel=IMP.rows.filter(r=>r.sel);if(!sel.length)return;
+  $('#impSave').disabled=true;const a=await getApi();const card=$('#impCard').value.trim();const now=new Date().toISOString();
+  try{impStatus('שומר…',`0 מתוך ${sel.length}`,0);$('#impTableWrap').hidden=true;$('#impActions').hidden=true;$('#impOpts').hidden=true;
+    const dates=sel.map(r=>r.date).sort();
+    const impId=await a.addImport({name:IMP.name,card,count:sel.length,total:Math.round(sel.reduce((s,r)=>s+(r.type==='expense'?r.amount:0),0)),from:dates[0],to:dates[dates.length-1],createdAt:now});
+    const list=sel.map(r=>({type:r.type,amount:Math.round(r.amount*100)/100,category:r.category,date:r.date,note:r.merchant,method:card||'כרטיס אשראי',fixed:false,source:'import',importId:impId,createdAt:now}));
+    await a.addMany(list,d=>impStatus('שומר…',`${d} מתוך ${sel.length}`,Math.round(d/sel.length*100)));
+    if(IMP.learn){Object.assign(S.rules,IMP.learn);await a.saveSettings().catch(()=>{})}
+    toast(`${sel.length} עסקאות נשמרו`);S.month=mkey(dates[dates.length-1]);impReset();location.hash='overview'}
+  catch(e){impStatus('השמירה נעצרה','חלק מהעסקאות אולי נשמרו. אפשר לבטל את הייבוא מרשימת הייבואים למטה ולנסות שוב.',null)}};
+let undoArm=null;
+function renderImpHist(){const el=$('#impHist');const l=[...S.imports].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+  if(!l.length){el.innerHTML='<div class="muted">עוד לא ייבאת קבצים.</div>';return}
+  el.innerHTML=`<div class="tablewrap"><table><thead><tr><th>קובץ</th><th>כרטיס</th><th>תקופה</th><th>עסקאות</th><th>סה״כ</th><th></th></tr></thead><tbody>${l.map(i=>`<tr><td class="m">${esc(i.name)}</td><td>${esc(i.card||'')}</td><td class="num">${esc((i.from||'').split('-').reverse().join('/'))} – ${esc((i.to||'').split('-').reverse().join('/'))}</td><td class="num">${i.count||0}</td><td class="num">${money(i.total||0)}</td><td><button type="button" class="btn danger sm" data-undo="${esc(i.id)}">${undoArm===i.id?'לחצי שוב לאישור':'ביטול ייבוא'}</button></td></tr>`).join('')}</tbody></table></div>`;
+  el.querySelectorAll('[data-undo]').forEach(b=>b.onclick=async()=>{const id=b.dataset.undo;if(undoArm!==id){undoArm=id;renderImpHist();setTimeout(()=>{if(undoArm===id){undoArm=null;renderImpHist()}},3500);return}
+    undoArm=null;b.disabled=true;b.textContent='מוחק…';const a=await getApi();try{await a.removeImport(id);toast('הייבוא בוטל והעסקאות נמחקו')}catch(e){toast('הביטול לא הצליח')}})}
+
+/* ================= reports ================= */
+$('#repRange').addEventListener('change',()=>render());
+function renderReports(){const all=data();const n=Number($('#repRange').value);const ks=lastKs(S.month,n),pks=lastKs(addM(S.month,-n),n);
+  const l=inMonths(all,ks),pl=inMonths(all,pks);const inc=total(l,'income'),exp=total(l,'expense');
+  $('#repSub').textContent=n===1?mName(S.month):`${mName(ks[0])} עד ${mName(ks[ks.length-1])}`;
+  $('#repKpis').innerHTML=kpiHTML(inc,exp,total(pl,'expense'),`<div class="kpi"><small>ממוצע הוצאות לחודש</small><b class="num">${money(exp/n)}</b><em>${n} חודשים</em></div>`);
+  renderTrend(all);
+  const cats=sumBy(l.filter(t=>t.type==='expense'),'category');const pc=Object.fromEntries(sumBy(pl.filter(t=>t.type==='expense'),'category'));
+  $('#repCats').innerHTML=cats.length?cats.map(([c,v])=>{const p=pc[c]||0;const ch=p>0?Math.round((v-p)/p*100):null;
+    return `<tr><td><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${catColor('expense',c)};margin-inline-end:7px"></span>${esc(c)}</td><td class="num">${money(v)}</td><td class="num">${exp?Math.round(v/exp*100):0}%</td><td class="num">${money(v/n)}</td><td>${ch===null?'<span class="pill">חדש</span>':`<span class="pill ${ch>15?'bad':ch<-5?'ok':''}">${ch>0?'▲':ch<0?'▼':''} ${Math.abs(ch)}%</span>`}</td></tr>`}).join('')
+    :'<tr><td colspan="5" class="muted">אין הוצאות בתקופה</td></tr>';
+  const mer=sumBy(l.filter(t=>t.type==='expense'),t=>t.note||t.category).slice(0,10);
+  $('#repMerch').innerHTML=barsHTML(mer,'expense',exp,()=>'var(--accent)');
+  $('#repMethod').innerHTML=barsHTML(sumBy(l.filter(t=>t.type==='expense'),t=>t.method||'לא צוין'),'expense',exp,n=>PAL[[...n].reduce((s,c)=>s+c.charCodeAt(0),0)%PAL.length]);
+  const fx=total(l.filter(t=>t.fixed),'expense');
+  $('#repFixed').innerHTML=barsHTML([['קבועות',fx],['משתנות',exp-fx]].filter(r=>r[1]).sort((a,b)=>b[1]-a[1]),'expense',exp,c=>c==='קבועות'?'var(--accent)':'var(--muted)');
+  $('#repInc').innerHTML=barsHTML(sumBy(l.filter(t=>t.type==='income'),'category'),'income',inc)}
+function renderTrend(all){const ks=lastKs(S.month,12);
+  const vals=ks.map(k=>{const l=inMonth(all,k);return{k,inc:total(l,'income'),exp:total(l,'expense')}});
+  const max=Math.max(1,...vals.flatMap(v=>[v.inc,v.exp]));
+  const step=Math.pow(10,Math.floor(Math.log10(max)));const nice=[1,2,2.5,5,10].map(x=>x*step).find(x=>max/x<=5)||step*10;const top=Math.ceil(max/nice)*nice;
+  const W=760,H=240,L=10,R=56,T=12,B=30,cw=(W-L-R)/12,bw=Math.min(18,cw/2.6);const y=v=>T+(H-T-B)*(1-Math.max(0,v)/top);
+  let g='';for(let v=0;v<=top+1e-9;v+=nice)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${W-R+8}" y="${y(v)+4}" font-size="12" fill="var(--muted)">${v>=1000?(v/1000)+'K':v}</text>`;
+  vals.forEach((v,i)=>{const cx=W-R-cw*(i+.5);const cur=v.k===S.month;
+    g+=`<rect x="${cx+1}" y="${y(v.inc)}" width="${bw}" height="${Math.max(0,y(0)-y(v.inc))}" rx="3" fill="var(--inc)" opacity="${cur?1:.55}"><title>${mName(v.k)} · הכנסות ${money(v.inc)}</title></rect>`;
+    g+=`<rect x="${cx-bw-1}" y="${y(v.exp)}" width="${bw}" height="${Math.max(0,y(0)-y(v.exp))}" rx="3" fill="var(--exp)" opacity="${cur?1:.55}"><title>${mName(v.k)} · הוצאות ${money(v.exp)}</title></rect>`;
+    g+=`<text x="${cx}" y="${H-8}" font-size="12" text-anchor="middle" fill="${cur?'var(--ink)':'var(--muted)'}" font-weight="${cur?700:400}">${mShort(v.k)}</text>`});
+  $('#repTrend').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="הכנסות והוצאות ב-12 חודשים">${g}</svg>`}
+
+/* ================= budget ================= */
+let budT={};
+function renderBudget(){const all=data(),l=inMonth(all,S.month);const exp=total(l,'expense');
+  const bt=Object.values(S.budgets).reduce((s,v)=>s+Number(v||0),0);const inBud=Object.keys(S.budgets).filter(c=>Number(S.budgets[c])>0);
+  const spentIn=total(l.filter(t=>inBud.includes(t.category)),'expense');
+  const over=inBud.filter(c=>total(l.filter(t=>t.category===c),'expense')>Number(S.budgets[c])).length;
+  $('#budKpis').innerHTML=`<div class="kpi"><small>תקציב חודשי</small><b class="num">${money(bt)}</b><em>${inBud.length} קטגוריות</em></div>
+   <div class="kpi exp"><small>הוצא בקטגוריות בתקציב</small><b class="num">${money(spentIn)}</b><em>${bt?Math.round(spentIn/bt*100)+'% מהתקציב':'&nbsp;'}</em></div>
+   <div class="kpi"><small>נשאר</small><b class="num" style="color:${bt-spentIn>=0?'var(--inc)':'var(--exp)'}">${money(bt-spentIn)}</b><em>${S.month===mkey(today())?(()=>{const [y,m]=S.month.split('-').map(Number);const left=new Date(y,m,0).getDate()-new Date().getDate()+1;return bt>spentIn?money((bt-spentIn)/left)+' ליום עד סוף החודש':'&nbsp;'})():'&nbsp;'}</em></div>
+   <div class="kpi"><small>חריגות</small><b class="num" style="color:${over?'var(--exp)':'var(--inc)'}">${over}</b><em>${over?'קטגוריות מעל התקציב':'הכל בתוך התקציב'}</em></div>`;
+  const ae=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.bud:null;
+  $('#budList').innerHTML=S.cats.expense.map(c=>{const b=Number(S.budgets[c]||0);const s=total(l.filter(t=>t.category===c),'expense');const st=b?budState(s,b):'';
+    const col=st==='bad'?'var(--exp)':st==='warn'?'var(--warn)':'var(--inc)';
+    return `<div class="bud"><span class="nm"><i style="background:${catColor('expense',c)}"></i>${esc(c)}</span>
+     <div class="meter"><div class="track"><span style="width:${b?Math.min(100,s/b*100):0}%;background:${b?col:'var(--muted)'}"></span></div>
+     <div class="meta num"><span>הוצא ${money(s)}</span><span>${b?(s<=b?'נשאר '+money(b-s):'<b style="color:var(--exp)">חריגה של '+money(s-b)+'</b>'):'ללא תקציב'}</span></div></div>
+     <input class="inp num" inputmode="numeric" data-bud="${esc(c)}" id="bud-${PAL.length}${S.cats.expense.indexOf(c)}" value="${b||''}" placeholder="₪ תקציב" aria-label="תקציב ל${esc(c)}"></div>`}).join('');
+  if(ae){const el=$$('[data-bud]').find(x=>x.dataset.bud===ae);if(el){el.focus();const v=el.value;el.setSelectionRange(v.length,v.length)}}
+  $$('[data-bud]').forEach(inp=>inp.addEventListener('change',async()=>{const c=inp.dataset.bud;const v=Math.round(parseFloat(inp.value.replace(/[^\d.]/g,''))||0);
+    if(v)S.budgets[c]=v;else delete S.budgets[c];const a=await getApi();try{await a.saveSettings();toast('התקציב נשמר')}catch(e){toast('השמירה לא הצליחה')}render()}))}
+$('#budSuggest').onclick=async()=>{const ks=[1,2,3].map(n=>addM(mkey(today()),-n));const l=inMonths(S.tx,ks);
+  if(!l.length){toast('צריך לפחות חודש אחד של נתונים כדי להציע תקציב');return}
+  const months=new Set(l.map(t=>mkey(t.date))).size||1;
+  for(const [c,v] of sumBy(l.filter(t=>t.type==='expense'),'category')){if(!S.budgets[c])S.budgets[c]=Math.max(50,Math.round(v/months*0.9/10)*10)}
+  const a=await getApi();try{await a.saveSettings();toast('הוצע תקציב: 10% מתחת לממוצע. אפשר לשנות כל שורה')}catch(e){}render()};
+
+/* ================= insights ================= */
+function insights(all,k){const out=[];const l=inMonth(all,k);
+  const inc=total(l,'income'),exp=total(l,'expense');
+  const prevL=[1,2,3].map(n=>inMonth(all,addM(k,-n))).filter(x=>x.length);
+  if(!l.length)return[{tone:'info',t:'אין עדיין נתונים לחודש הזה',b:'הזיני תנועות או ייבאי את פירוט האשראי, והתובנות יתעדכנו מעצמן.'}];
+  if(inc>0){const r=Math.round((inc-exp)/inc*100);
+    out.push(r>=20?{tone:'good',t:`חסכת ${r}% מההכנסה החודש`,b:`נשארו ${money(inc-exp)}. כדאי להעביר סכום קבוע לחיסכון כבר בתחילת החודש, לפני שהוא מתפזר.`}
+      :r>=0?{tone:'warn',t:`נשאר רק ${r}% מההכנסה`,b:`יעד סביר הוא 10–20%. כדי להגיע ל-15% צריך לצמצם בערך ${money(Math.max(0,exp-inc*.85))} בחודש.`}
+      :{tone:'bad',t:'החודש יצא יותר ממה שנכנס',b:`החריגה היא ${money(exp-inc)}. התחילי מהקטגוריות המשתנות הגדולות.`})}
+  for(const [c,b] of Object.entries(S.budgets)){const s=total(l.filter(t=>t.category===c),'expense');if(b>0&&s>b)out.push({tone:'bad',t:`חריגה מהתקציב ב${c}`,b:`הוצאת ${money(s)} מתוך ${money(b)}.`})}
+  const cats=sumBy(l.filter(t=>t.type==='expense'),'category');
+  if(cats.length&&exp>0){const [n,v]=cats[0];out.push({tone:'info',t:`${n}: ${Math.round(v/exp*100)}% מההוצאות`,b:`${money(v)} החודש. חיסכון של 10% כאן שווה ${money(v*.1)} בחודש, ${money(v*1.2)} בשנה.`})}
+  if(prevL.length)for(const [n,v] of cats){const avg=prevL.reduce((s,pl)=>s+total(pl.filter(t=>t.category===n),'expense'),0)/prevL.length;
+    if(avg>150&&v>avg*1.2&&v-avg>150)out.push({tone:'warn',t:`${n} עלתה ב-${Math.round((v-avg)/avg*100)}%`,b:`${money(v)} החודש לעומת ממוצע של ${money(avg)}. בדקי בעמוד התנועות מה השתנה.`})}
+  /* recurring merchants detected across months */
+  if(prevL.length>=2){const m0=new Set(l.filter(t=>t.type==='expense'&&t.note).map(t=>normM(t.note)));
+    const rec=[...m0].filter(m=>prevL.slice(0,2).every(pl=>pl.some(t=>normM(t.note)===m)));
+    const recTx=l.filter(t=>t.type==='expense'&&rec.includes(normM(t.note))&&amt(t)<400);
+    if(recTx.length>=2)out.push({tone:'info',t:`${recTx.length} חיובים חוזרים כל חודש: ${money(total(recTx,'expense'))}`,b:recTx.slice(0,6).map(t=>`${t.note} ${money(amt(t))}`).join(' · ')+'. עברי עליהם ובדקי מה עוד בשימוש. שיחה לספק הסלולר, האינטרנט או הביטוח חוסכת לרוב 10–30%.'})}
+  const eat=cats.find(c=>/מסעד|בילוי/.test(c[0]));
+  if(eat&&exp>0&&eat[1]/exp>.08)out.push({tone:'warn',t:`${eat[0]}: ${money(eat[1])} החודש`,b:`זה ${Math.round(eat[1]/exp*100)}% מההוצאות. תקציב שבועי קבוע (למשל ${money(eat[1]/4.3*.75)}) מוריד כרבע בלי לוותר לגמרי.`});
+  const small=l.filter(t=>t.type==='expense'&&!t.fixed&&amt(t)>0&&amt(t)<60);
+  if(small.length>=6)out.push({tone:'info',t:`${small.length} הוצאות קטנות הצטברו ל-${money(total(small,'expense'))}`,b:'קפה, חטיפים וקניות קטנות נראים זניחים אחד-אחד. שווה להחליט על מספר פעמים בשבוע.'});
+  const src=sumBy(l.filter(t=>t.type==='income'),'category');
+  if(inc>0&&src.length&&src[0][1]/inc>.85)out.push({tone:'info',t:`${Math.round(src[0][1]/inc*100)}% מההכנסה ממקור אחד (${src[0][0]})`,b:'מקור הכנסה נוסף, אפילו קטן, מקטין את הסיכון: עבודה צדדית מהמקצוע שלך, מכירת חפצים שלא בשימוש, השכרת חניה או מחסן.'});
+  out.push({tone:'info',t:'בדיקה שנתית שכדאי לעשות',b:'החזר מס (טופס 135) על השנים האחרונות, דמי ניהול בפנסיה ובקרן ההשתלמות, ועמלות בנק. כסף שחוזר אלייך בלי לשנות הרגלים.'});
+  return out}
+function renderInsights(){$('#insList').innerHTML=insights(data(),S.month).map(i=>`<div class="ins ${i.tone}"><span class="s"></span><div><b>${esc(i.t)}</b><p>${esc(i.b)}</p></div></div>`).join('')}
+function summaryFor(k){const all=data();return lastKs(k,3).map(m=>{const l=inMonth(all,m);const ex=l.filter(t=>t.type==='expense');return{month:m,income_total:Math.round(total(l,'income')),expense_total:Math.round(total(l,'expense')),
+  income_by_source:Object.fromEntries(sumBy(l.filter(t=>t.type==='income'),'category').map(([a,b])=>[a,Math.round(b)])),
+  expense_by_category:Object.fromEntries(sumBy(ex,'category').map(([a,b])=>[a,Math.round(b)])),
+  top_merchants:sumBy(ex,t=>t.note||t.category).slice(0,15).map(([a,b])=>({merchant:a,amount:Math.round(b)})),
+  fixed_expenses:ex.filter(t=>t.fixed).map(t=>({what:t.note||t.category,amount:Math.round(amt(t))}))}})}
+function renderAI(text){const el=$('#aiOut');el.innerHTML='';let ul=null;
+  for(const raw of text.split('\n')){const line=raw.trim();if(!line){ul=null;continue}const clean=s=>s.replace(/\*\*/g,'');
+    if(/^#{1,4}\s/.test(line)){ul=null;const h=document.createElement('h4');h.textContent=clean(line.replace(/^#+\s*/,''));el.appendChild(h)}
+    else if(/^[-•*]\s/.test(line)){if(!ul){ul=document.createElement('ul');el.appendChild(ul)}const li=document.createElement('li');li.textContent=clean(line.replace(/^[-•*]\s*/,''));ul.appendChild(li)}
+    else{ul=null;const p=document.createElement('p');p.textContent=clean(line);el.appendChild(p)}}}
+function advicePrompt(){const budgets=Object.keys(S.budgets).length?`\nהתקציב החודשי שהגדרתי: ${JSON.stringify(S.budgets)}`:'';
+  return `אני רוצה ייעוץ לכלכלת הבית. פני אליי בלשון נקבה, בעברית פשוטה.
+${isDemo()?'(אלה נתוני דוגמה מהאתר, עוד לא הנתונים האמיתיים שלי)\n':''}סיכום שלושת החודשים האחרונים שלי בשקלים (JSON):
+${JSON.stringify(summaryFor(S.month))}${budgets}
+
+תני לי: 1) התמונה בקצרה, 2) איפה אפשר לחסוך (3–5 צעדים עם הערכת חיסכון חודשית בש"ח לפי בתי העסק והקטגוריות בפועל), 3) איך להגדיל הכנסה (3–4 רעיונות שמתאימים לישראל, כולל זכויות והטבות שכדאי לבדוק), 4) צעד ראשון לשבוע הזה.`}
+$('#aiBtn').onclick=async()=>{const p=advicePrompt();const out=$('#aiOut');
+  out.innerHTML='<textarea class="inp" id="aiText" rows="8" readonly style="font-size:13px;direction:rtl"></textarea><p class="muted" style="margin-top:8px">הדביקי את הטקסט בשיחה עם Claude. <a href="https://claude.ai" target="_blank" rel="noopener">פתיחת Claude</a></p>';
+  $('#aiText').value=p;
+  try{await navigator.clipboard.writeText(p);toast('הסיכום הועתק. הדביקי אותו ב-Claude')}catch(e){$('#aiText').select();toast('סמני והעתיקי את הטקסט')}};
+
+/* ================= prefs ================= */
+function renderPrefs(){
+  for(const [type,el] of [['expense','#setExp'],['income','#setInc']])
+    $(el).innerHTML=S.cats[type].map(c=>`<span class="chip"><i style="background:${catColor(type,c)}"></i>${esc(c)}<button type="button" data-t="${type}" data-c="${esc(c)}" aria-label="הסרת ${esc(c)}" style="border:0;background:none;color:var(--muted);padding:0 2px;font-size:16px;line-height:1">×</button></span>`).join('');
+  const rl=Object.entries(S.rules);
+  $('#rulesList').innerHTML=rl.length?`<div class="tablewrap"><table><tbody>${rl.map(([m,c])=>`<tr><td class="m">${esc(m)}</td><td>${esc(c)}</td><td><button type="button" class="btn ghost sm" data-rule="${esc(m)}">הסרה</button></td></tr>`).join('')}</tbody></table></div>`:'<div class="muted">עוד אין.</div>';
+  $('#rulesList').querySelectorAll('[data-rule]').forEach(b=>b.onclick=async()=>{delete S.rules[b.dataset.rule];render();const a=await getApi();a.saveSettings().catch(()=>{})});
+  $('#whereTxt').textContent='הנתונים נשמרים בענן של Google ‏(Firebase) תחת החשבון '+(fbUser&&fbUser.email||'שלך')+', ומסונכרנים בין הנייד למחשב. רק את יכולה לקרוא אותם.'}
+document.addEventListener('click',async e=>{const b=e.target.closest('#setExp button,#setInc button');if(!b)return;
+  const {t,c}=b.dataset;if(S.cats[t].length<=1)return;S.cats[t]=S.cats[t].filter(x=>x!==c);render();const a=await getApi();a.saveSettings().catch(()=>toast('השמירה לא הצליחה'))});
+async function addCat(type,inp){const v=$(inp).value.trim();if(!v||S.cats[type].includes(v))return;const has=S.cats[type].includes('אחר');S.cats[type]=[...S.cats[type].filter(x=>x!=='אחר'),v,...(has?['אחר']:[])];$(inp).value='';render();const a=await getApi();a.saveSettings().then(()=>toast('נוסף')).catch(()=>toast('השמירה לא הצליחה'))}
+$('#addExp').onclick=()=>addCat('expense','#newExp');$('#addInc').onclick=()=>addCat('income','#newInc');
+$('#newExp').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCat('expense','#newExp')}};
+$('#newInc').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCat('income','#newInc')}};
+$('#csvBtn').onclick=async()=>{if(!S.tx.length){toast('אין עדיין תנועות לייצוא');return}
+  
+  const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';
+  const csv='﻿'+['תאריך,סוג,קטגוריה,סכום,בית עסק / תיאור,אמצעי תשלום,קבוע,מקור',...sortTx(S.tx).map(t=>[t.date,t.type==='income'?'הכנסה':'הוצאה',q(t.category),t.amount,q(t.note),q(t.method),t.fixed?'כן':'',t.source==='import'?'ייבוא':'ידני'].join(','))].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='הכיס-שלי-'+today()+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)};
+
+/* ================= render ================= */
+function render(){
+  $('#sync').className='sync '+S.mode;$('#syncTxt').textContent=S.mode==='cloud'?(fbUser&&fbUser.email||'מחוברת'):'מתחבר…';
+  $$('.mlabel').forEach(el=>el.textContent=mName(S.month));
+  $$('[data-demo]').forEach(el=>el.hidden=!isDemo());
+  $('#methods').innerHTML=METHODS.map(m=>`<option value="${esc(m)}">`).join('');
+  const p=S.page;
+  if(p==='overview')renderOverview();
+  if(p==='add')renderChips();
+  if(p==='transactions')renderTx();
+  if(p==='import')renderImpHist();
+  if(p==='reports')renderReports();
+  if(p==='budget')renderBudget();
+  if(p==='insights')renderInsights();
+  if(p==='prefs')renderPrefs();
+}
+setType('expense');$('#date').value=today();
+route();
+if(!window.FIREBASE_CONFIG||!window.FIREBASE_CONFIG.apiKey||!window.firebase){$('#gateMsg').textContent='האתר עוד לא מחובר ל-Firebase. צריך למלא את הקובץ config.js.';$('#loginBtn').hidden=true}
+else{
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  firebase.firestore().enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  const prov=new firebase.auth.GoogleAuthProvider();prov.setCustomParameters({prompt:'select_account'});
+  $('#loginBtn').onclick=async()=>{$('#gateMsg').textContent='';try{await firebase.auth().signInWithPopup(prov)}catch(e){
+    if(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment'){firebase.auth().signInWithRedirect(prov)}
+    else if(e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request')$('#gateMsg').textContent='הכניסה לא הצליחה ('+e.code+'). נסי שוב.'}};
+  $('#logoutBtn').onclick=()=>firebase.auth().signOut();
+  firebase.auth().getRedirectResult().catch(e=>{$('#gateMsg').textContent='הכניסה לא הצליחה ('+e.code+').'});
+  firebase.auth().onAuthStateChanged(u=>{unsubs.forEach(f=>f());unsubs=[];fbUser=u;
+    if(u){$('#gate').hidden=true;S.mode='pending';connect(u);render()}
+    else{$('#gate').hidden=false;api=null;S.tx=[];S.imports=[];S.budgets={};S.rules={};S.cats=JSON.parse(JSON.stringify(DEF_CATS));S.mode='pending';render()}})}
+})();
+</script>
+
+</body>
+</html>
