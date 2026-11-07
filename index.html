@@ -707,7 +707,7 @@ function parseRows(rows){/* rows: array of arrays from a sheet */
         merchant:findCol(txt,[/שם בית ה?עסק|בית ה?עסק|שם העסק/,/תיאור|פירוט|הפעולה|תנועה|אסמכתא תיאור/]),
         amount:findCol(txt,[/סכום חיוב|סכום לחיוב|חיוב בש|סכום החיוב/,/סכום בש"ח|סכום ב₪/,/^סכום$/,/סכום(?! עסקה מקורי)/,/סכום/]),
         debit:findCol(txt,[/^חובה$|חובה/]),credit:findCol(txt,[/^זכות$|זכות/]),
-        kind:findCol(txt,[/סוג עסקה|סוג העסקה/]),notes:findCol(txt,[/הערות|פירוט נוסף/])};
+        kind:findCol(txt,[/סוג עסקה|סוג העסקה/]),notes:findCol(txt,[/הערות|פירוט נוסף/]),mycat:findCol(txt,[/קטגוריה בהכיס שלי/]),cat:findCol(txt,[/^קטגוריה$/])};
       if(map.debit>=0&&map.credit>=0&&map.debit===map.amount)map.amount=-1;
       continue}
     if(!map||map.date<0)continue;
@@ -718,7 +718,8 @@ function parseRows(rows){/* rows: array of arrays from a sheet */
     else{amount=parseAmt(r[map.amount])}
     if(amount==null||amount===0)continue;
     const note=map.notes>=0?String(r[map.notes]??'').trim():'';
-    out.push({date,merchant:merchant||'ללא שם',amount,type,extra:note})}
+    const kind=map.kind>=0?String(r[map.kind]??''):'';const mycat=map.mycat>=0?String(r[map.mycat]??'').trim():'';const cat0=map.cat>=0?String(r[map.cat]??'').trim():'';
+    out.push({date,merchant:merchant||'ללא שם',amount,type,extra:note,fixed:/הוראת קבע/.test(kind+' '+note),mycat,cat0})}
   return out}
 async function parseSheetFile(f){
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
@@ -777,16 +778,22 @@ async function handleFiles(list){const files=[...list];if(!files.length)return;i
   try{const rows=[];const imgs=files.filter(isImg),others=files.filter(f=>!isImg(f));
     for(const [i,f] of others.entries()){const pre=others.length>1?`(${i+1}/${others.length}) `:'';
       if(/\.(xlsx|xls|csv)$/i.test(f.name)){const r=await parseSheetFile(f);let rr=r.rows;
-        if(!rr.length){impStatus('קורא את '+name,pre+'מזהה את מבנה הקובץ…',35);rr=await aiExtract(r.text)}rows.push(...rr)}
+        if(!rr.length){impStatus('קורא את '+name,pre+'מזהה את מבנה הקובץ…',35);rr=await aiExtract(r.text)}rr.forEach(x=>rows.push({...x,src:'f'+i}))}
       else if(/\.pdf$/i.test(f.name)||f.type==='application/pdf'){impStatus('קורא את '+name,pre+'קורא את ה-PDF. זה יכול לקחת עד דקה…',30);
-        try{rows.push(...await aiExtract(null,[f]))}catch(e){const t=await pdfText(f).catch(()=>'');const rr=textExtract(t);if(!rr.length)throw e;rows.push(...rr)}}
+        let rr;try{rr=await aiExtract(null,[f])}catch(e){const t=await pdfText(f).catch(()=>'');rr=textExtract(t);if(!rr.length)throw e}rr.forEach(x=>rows.push({...x,src:'f'+i}))}
       else throw new Error('סוג קובץ לא נתמך: '+f.name+'. העלי Excel, ‏CSV, ‏PDF או תמונה.')}
     for(let i=0;i<imgs.length;i+=5){const part=imgs.slice(i,i+5);
       impStatus('קורא את '+name,`קורא ${imgs.length>1?'תמונות '+(i+1)+'–'+(i+part.length)+' מתוך '+imgs.length:'את התמונה'}. זה יכול לקחת עד דקה…`,30+Math.round(i/imgs.length*30));
-      rows.push(...await aiExtract(null,part))}
+      (await aiExtract(null,part)).forEach(r=>rows.push({...r,src:'img'+i}))}
     if(!rows.length)throw new Error('לא מצאתי עסקאות בקובץ.');
-    const seen=new Set();const uniq=rows.filter(r=>{const k=r.date+'|'+r.amount+'|'+normM(r.merchant);if(seen.has(k))return false;seen.add(k);return true});
-    IMP.rows=uniq.map(r=>({...r,category:guessCat(r.merchant,r.type),sel:true}));
+    /* overlapping screenshots can repeat rows: per key keep the largest count seen in any single source, never collapse repeats within one source */
+    const per={};rows.forEach(r=>{const k=r.date+'|'+r.amount+'|'+normM(r.merchant);const src=r.src||0;(per[k]=per[k]||{})[src]=((per[k]||{})[src]||0)+1});
+    const keep={};for(const k in per)keep[k]=Math.max(...Object.values(per[k]));
+    const uniq=rows.filter(r=>{const k=r.date+'|'+r.amount+'|'+normM(r.merchant);if(keep[k]>0){keep[k]--;return true}return false});
+    /* a file prepared for this site may carry its own categories ("קטגוריה בהכיס שלי"): add any new ones */
+    const newCats=[...new Set(uniq.filter(r=>r.mycat&&!S.cats[r.type].includes(r.mycat)).map(r=>r.type+'|'+r.mycat))];
+    if(newCats.length){for(const k of newCats){const [ty,c]=k.split('|');const has=S.cats[ty].includes('אחר');S.cats[ty]=[...S.cats[ty].filter(x=>x!=='אחר'),c,...(has?['אחר']:[])]}const a0=await getApi();a0&&a0.saveSettings().catch(()=>{})}
+    IMP.rows=uniq.map(r=>({...r,category:r.mycat||guessCat(r.merchant,r.type)||(S.cats[r.type].includes(r.cat0)?r.cat0:null),sel:true}));
     markDups();
     const unknown=[...new Set(IMP.rows.filter(r=>!r.category).map(r=>r.merchant))];
     if(unknown.length){impStatus('נמצאו '+uniq.length+' עסקאות','מסווג '+unknown.length+' בתי עסק לקטגוריות…',75);await claudeCategorize(unknown)}
@@ -859,10 +866,10 @@ $('#impSave').onclick=async()=>{const sel=IMP.rows.filter(r=>r.sel);if(!sel.leng
     for(const r of merges){const t=manualById(r.match.pick);if(!t)continue;const u={...t};delete u.id;
       Object.assign(u,{reconciled:true,bankName:r.merchant,bankAmount:Math.round(r.amount*100)/100,amount:Math.round(r.amount*100)/100,importId:impId,method:t.method||card||'כרטיס אשראי',note:t.note||r.merchant,category:r.category||t.category});
       await a.update(t.id,u)}
-    const list=fresh.map(r=>({type:r.type,amount:Math.round(r.amount*100)/100,category:r.category,date:r.date,note:r.merchant,method:card||'כרטיס אשראי',fixed:false,source:'import',importId:impId,createdAt:now}));
+    const list=fresh.map(r=>({type:r.type,amount:Math.round(r.amount*100)/100,category:r.category,date:r.date,note:r.merchant,method:card||'כרטיס אשראי',fixed:!!r.fixed,source:'import',importId:impId,createdAt:now}));
     await a.addMany(list,d=>impStatus('שומר…',`${d} מתוך ${sel.length}`,Math.round(d/sel.length*100)));
     if(IMP.learn){Object.assign(S.rules,IMP.learn);await a.saveSettings().catch(()=>{})}
-    toast(`${fresh.length} עסקאות נוספו${merges.length?`, ${merges.length} אומתו מול ההזנה שלך`:''}`);S.month=mkey(dates[dates.length-1]);impReset();location.hash='overview'}
+    toast(`${fresh.length} עסקאות נוספו${merges.length?`, ${merges.length} אומתו מול ההזנה שלך`:''}`);{const cnt={};dates.forEach(d=>cnt[mkey(d)]=(cnt[mkey(d)]||0)+1);S.month=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0]}impReset();location.hash='overview'}
   catch(e){impStatus('השמירה נעצרה','חלק מהעסקאות אולי נשמרו. אפשר לבטל את הייבוא מרשימת הייבואים למטה ולנסות שוב.',null)}};
 let undoArm=null;
 function renderImpHist(){const el=$('#impHist');const l=[...S.imports].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
