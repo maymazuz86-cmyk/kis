@@ -824,7 +824,7 @@ function parseRows(rows){/* rows: array of arrays from a sheet */
         merchant:findCol(txt,[/שם בית ה?עסק|בית ה?עסק|שם העסק/,/תיאור|פירוט|הפעולה|תנועה|אסמכתא תיאור/]),
         amount:findCol(txt,[/סכום חיוב|סכום לחיוב|חיוב בש|סכום החיוב/,/סכום בש"ח|סכום ב₪/,/^סכום$/,/סכום(?! עסקה מקורי)/,/סכום/]),
         debit:findCol(txt,[/^חובה$|חובה/]),credit:findCol(txt,[/^זכות$|זכות/]),
-        kind:findCol(txt,[/סוג עסקה|סוג העסקה/]),notes:findCol(txt,[/הערות|פירוט נוסף/]),mycat:findCol(txt,[/קטגוריה בהכיס שלי/]),cat:findCol(txt,[/^קטגוריה$/])};
+        kind:findCol(txt,[/סוג עסקה|סוג העסקה/]),notes:findCol(txt,[/הערות|פירוט נוסף/]),mycat:findCol(txt,[/קטגוריה בהכיס שלי/]),cat:findCol(txt,[/^קטגוריה$/]),who:findCol(txt,[/למי שייך|^למי$|בשביל מי/])};
       if(map.debit>=0&&map.credit>=0&&map.debit===map.amount)map.amount=-1;
       continue}
     if(!map||map.date<0)continue;
@@ -835,8 +835,8 @@ function parseRows(rows){/* rows: array of arrays from a sheet */
     else{amount=parseAmt(r[map.amount])}
     if(amount==null||amount===0)continue;
     const note=map.notes>=0?String(r[map.notes]??'').trim():'';
-    const kind=map.kind>=0?String(r[map.kind]??''):'';const mycat=map.mycat>=0?String(r[map.mycat]??'').trim():'';const cat0=map.cat>=0?String(r[map.cat]??'').trim():'';
-    out.push({date,merchant:merchant||'ללא שם',amount,type,extra:note,fixed:/הוראת קבע/.test(kind+' '+note),mycat,cat0})}
+    const kind=map.kind>=0?String(r[map.kind]??''):'';const mycat=map.mycat>=0?String(r[map.mycat]??'').trim():'';const cat0=map.cat>=0?String(r[map.cat]??'').trim():'';const who=map.who>=0?String(r[map.who]??'').trim():'';
+    out.push({date,merchant:merchant||'ללא שם',amount,type,extra:note,fixed:/הוראת קבע/.test(kind+' '+note),mycat,cat0,who})}
   return out}
 async function parseSheetFile(f){
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
@@ -909,6 +909,8 @@ async function handleFiles(list){const files=[...list];if(!files.length)return;i
     const uniq=rows.filter(r=>{const k=r.date+'|'+r.amount+'|'+normM(r.merchant);if(keep[k]>0){keep[k]--;return true}return false});
     /* a file prepared for this site may carry its own categories ("קטגוריה בהכיס שלי"): add any new ones */
     const newCats=[...new Set(uniq.filter(r=>r.mycat&&!S.cats[r.type].includes(r.mycat)).map(r=>r.type+'|'+r.mycat))];
+    /* ...and its own "for whom" groups ("למי שייך"): add any new ones */
+    const newGroups=[...new Set(uniq.map(r=>r.who).filter(g=>g&&!S.groups.includes(g)))];if(newGroups.length){S.groups=[...S.groups,...newGroups];if(!newCats.length){const a1=await getApi();a1&&a1.saveSettings().catch(()=>{})}}
     if(newCats.length){for(const k of newCats){const [ty,c]=k.split('|');const has=S.cats[ty].includes('אחר');S.cats[ty]=[...S.cats[ty].filter(x=>x!=='אחר'),c,...(has?['אחר']:[])]}const a0=await getApi();a0&&a0.saveSettings().catch(()=>{})}
     IMP.rows=uniq.map(r=>({...r,category:r.mycat||guessCat(r.merchant,r.type)||(S.cats[r.type].includes(r.cat0)?r.cat0:null),sel:true}));
     markDups();
@@ -926,8 +928,9 @@ const dayDiff=(a,b)=>Math.round(Math.abs(new Date(a)-new Date(b))/864e5);
 function nameMatch(a,b){const x=normM(a),y=normM(b);if(!x||!y)return false;if(x.includes(y)||y.includes(x))return true;
   const tx=x.split(' ').filter(w=>w.length>=3),ty=new Set(y.split(' ').filter(w=>w.length>=3));return tx.some(w=>ty.has(w))}
 function markDups(){/* 1) rows already imported before; 2) match to expenses typed in manually ("live") */
-  const keys=new Set(S.tx.filter(t=>t.source==='import'||t.reconciled).map(t=>t.date+'|'+Math.round(Math.abs(amt(t))*100)+'|'+normM(t.bankName||t.note)));
-  IMP.rows.forEach(r=>{r.dup=keys.has(r.date+'|'+Math.round(Math.abs(r.amount)*100)+'|'+normM(r.merchant));if(r.dup)r.sel=false;r.match=null});
+  const keys=new Map();S.tx.filter(t=>t.source==='import'||t.reconciled).forEach(t=>{const k=t.date+'|'+Math.round(Math.abs(amt(t))*100)+'|'+normM(t.bankName||t.note);(keys.get(k)||keys.set(k,[]).get(k)).push(t.id)});
+  const taken=new Set();
+  IMP.rows.forEach(r=>{const ids=keys.get(r.date+'|'+Math.round(Math.abs(r.amount)*100)+'|'+normM(r.merchant))||[];const id=ids.find(x=>!taken.has(x));r.dup=ids.length>0;r.dupId=id||null;if(id)taken.add(id);if(r.dup)r.sel=false;r.match=null});
   const manual=S.tx.filter(t=>t.source!=='import'&&!t.reconciled);const used=new Set();
   const cands=r=>manual.filter(t=>!used.has(t.id)&&t.type===r.type&&Math.abs(amt(t)-r.amount)<=Math.max(1,Math.abs(r.amount)*0.03)&&dayDiff(t.date,r.date)<=5);
   const score=(t,r)=>(Math.abs(amt(t)-r.amount)<0.01?3:1)+(dayDiff(t.date,r.date)===0?2:dayDiff(t.date,r.date)<=2?1:0)+(nameMatch(t.note,r.merchant)?3:0)+(guessCat(r.merchant,r.type)===t.category?1:0);
@@ -941,13 +944,16 @@ function markDups(){/* 1) rows already imported before; 2) match to expenses typ
     r.match={cands:c.sort((a,b)=>score(b,r)-score(a,r)).slice(0,4).map(t=>t.id),pick:null,sure:false}}
 }
 function manualById(id){return S.tx.find(t=>t.id===id)}
+/* rows that were already imported but carry a "for whom" the existing transaction doesn't have yet */
+function whoUpdates(){if(!IMP)return[];return IMP.rows.filter(r=>r.dup&&!r.sel&&r.who&&r.dupId).map(r=>[r,manualById(r.dupId)]).filter(([r,t])=>t&&t.type==='expense'&&(t.who||S.whoMap[t.category]||'')!==r.who)}
 function candLabel(t){return `${t.note||t.category} · ${money2(amt(t))} · ${t.date.split('-').reverse().slice(0,2).join('/')}`}
 function showPreview(){const rows=IMP.rows;const dups=rows.filter(r=>r.dup).length;
   const dates=rows.map(r=>r.date).sort();
   $('#impTitle').textContent=`נמצאו ${rows.length} עסקאות`;
   $('#impMeta').textContent=`${dates[0].split('-').reverse().join('/')} עד ${dates[dates.length-1].split('-').reverse().join('/')}`;
+  const whoUpd=whoUpdates().length;
   const sure=rows.filter(r=>r.match&&r.match.sure).length,ask=rows.filter(r=>r.match&&!r.match.sure).length;
-  $('#impStatus').innerHTML=[dups?`${dups} עסקאות כבר יובאו בעבר ולא סומנו.`:'',sure?`<b style="color:var(--inc)">${sure} עסקאות תואמות להוצאות שהזנת ידנית</b>, ולכן הן יאומתו ולא ייכפלו.`:'',ask?`<b style="color:var(--warn)">${ask} עסקאות דומות להוצאות שהזנת, ואני לא בטוח שמדובר באותה הוצאה.</b> בחרי בעמודה "התאמה" (השורות הצהובות).`:'','שינוי קטגוריה לבית עסק מעדכן את כל העסקאות שלו, והאתר יזכור אותו לפעם הבאה.'].filter(Boolean).join(' ');
+  $('#impStatus').innerHTML=[dups?`${dups} עסקאות כבר יובאו בעבר ולא סומנו.`:'',whoUpd?`<b style="color:var(--inc)">${whoUpd} מהעסקאות שכבר יובאו יקבלו את השיוך "למי" מהקובץ.</b>`:'',sure?`<b style="color:var(--inc)">${sure} עסקאות תואמות להוצאות שהזנת ידנית</b>, ולכן הן יאומתו ולא ייכפלו.`:'',ask?`<b style="color:var(--warn)">${ask} עסקאות דומות להוצאות שהזנת, ואני לא בטוח שמדובר באותה הוצאה.</b> בחרי בעמודה "התאמה" (השורות הצהובות).`:'','שינוי קטגוריה לבית עסק מעדכן את כל העסקאות שלו, והאתר יזכור אותו לפעם הבאה.'].filter(Boolean).join(' ');
   $('#impProg').hidden=true;$('#impOpts').hidden=false;$('#impTableWrap').hidden=false;$('#impActions').hidden=false;
   $('#impCard').value=$('#impCard').value||guessCardName(IMP.name);
   $('#impBulk').innerHTML='<option value="">שינוי קטגוריה לכל המסומנות…</option>'+S.cats.expense.map(c=>`<option>${esc(c)}</option>`).join('');
@@ -959,12 +965,12 @@ function matchCell(r,i){if(r.dup)return'<span class="pill warn">כבר יובא<
   return `<select class="imatch" data-i="${i}" aria-label="התאמה">${r.match.pick==null?'<option value="" selected>זו אותה הוצאה שהזנתי?</option>':''}${opts}<option value="new" ${r.match.pick==='new'?'selected':''}>לא, זו הוצאה נפרדת</option></select>`}
 function renderImpTable(){
   $('#impBody').innerHTML=IMP.rows.map((r,i)=>`<tr class="${r.dup?'dup':''} ${r.match&&r.match.pick==null&&r.sel?'ask':''}"><td><input type="checkbox" data-i="${i}" class="isel" ${r.sel?'checked':''} aria-label="בחירה"></td>
-   <td class="num">${r.date.split('-').reverse().join('/')}</td><td class="m">${esc(r.merchant)}${r.extra?`<div class="muted" style="font-size:12px">${esc(r.extra)}</div>`:''}</td>
+   <td class="num">${r.date.split('-').reverse().join('/')}</td><td class="m">${esc(r.merchant)}${r.who?`<div class="muted" style="font-size:12px">למי: ${esc(r.who)}</div>`:''}${r.extra?`<div class="muted" style="font-size:12px">${esc(r.extra)}</div>`:''}</td>
    <td class="amt num" style="color:${r.type==='income'||r.amount<0?'var(--inc)':'inherit'}">${r.type==='income'||r.amount<0?'+':''}${fmt2.format(Math.abs(r.amount))}</td>
    <td><select data-i="${i}" class="icat">${S.cats[r.type].map(c=>`<option ${c===r.category?'selected':''}>${esc(c)}</option>`).join('')}</select></td>
    <td>${matchCell(r,i)}</td></tr>`).join('');
   const open=IMP.rows.filter(r=>r.sel&&r.match&&r.match.pick==null).length;
-  const sel=IMP.rows.filter(r=>r.sel);const mer=sel.filter(r=>r.match&&r.match.pick&&r.match.pick!=='new').length;$('#impSave').textContent=open?`נשארו ${open} שאלות לפני שמירה`:`שמירה: ${sel.length-mer} חדשות${mer?`, ${mer} מאומתות מול ההזנה שלך`:''}`;$('#impSave').disabled=!sel.length||open>0;
+  const sel=IMP.rows.filter(r=>r.sel);const mer=sel.filter(r=>r.match&&r.match.pick&&r.match.pick!=='new').length;const wu=whoUpdates().length;$('#impSave').textContent=open?`נשארו ${open} שאלות לפני שמירה`:`שמירה: ${sel.length-mer} חדשות${mer?`, ${mer} מאומתות מול ההזנה שלך`:''}${wu?`, ${wu} עדכוני שיוך`:''}`;$('#impSave').disabled=(!sel.length&&!wu)||open>0;
   $('#impAll').checked=sel.length===IMP.rows.length}
 $('#impBody').addEventListener('change',e=>{const i=Number(e.target.dataset.i);if(isNaN(i))return;
   if(e.target.classList.contains('isel')){IMP.rows[i].sel=e.target.checked;renderImpTable()}
@@ -974,19 +980,21 @@ $('#impBody').addEventListener('change',e=>{const i=Number(e.target.dataset.i);i
   if(e.target.classList.contains('icat')){const r=IMP.rows[i];const c=e.target.value;const k=normM(r.merchant);IMP.rows.forEach(x=>{if(normM(x.merchant)===k&&x.type===r.type)x.category=c});if(k&&r.type==='expense')IMP.learn=Object.assign(IMP.learn||{},{[k]:c});renderImpTable()}});
 $('#impAll').addEventListener('change',e=>{IMP.rows.forEach(r=>r.sel=e.target.checked);renderImpTable()});
 $('#impBulk').addEventListener('change',e=>{const c=e.target.value;if(!c)return;IMP.rows.forEach(r=>{if(r.sel&&r.type==='expense')r.category=c});e.target.value='';renderImpTable()});
-$('#impSave').onclick=async()=>{const sel=IMP.rows.filter(r=>r.sel);if(!sel.length)return;
+$('#impSave').onclick=async()=>{const sel=IMP.rows.filter(r=>r.sel);const wu=whoUpdates();if(!sel.length&&!wu.length)return;
   $('#impSave').disabled=true;const a=await getApi();const card=$('#impCard').value.trim();const now=new Date().toISOString();
   try{impStatus('שומר…',`0 מתוך ${sel.length}`,0);$('#impTableWrap').hidden=true;$('#impActions').hidden=true;$('#impOpts').hidden=true;
+    for(const [r,t] of wu){const u={...t};delete u.id;u.who=r.who;await a.update(t.id,u)}
+    if(!sel.length){toast(`${wu.length} עסקאות קיבלו שיוך`);impReset();location.hash='transactions';return}
     const dates=sel.map(r=>r.date).sort();
     const impId=await a.addImport({name:IMP.name,card,count:sel.length,total:Math.round(sel.reduce((s,r)=>s+(r.type==='expense'?r.amount:0),0)),from:dates[0],to:dates[dates.length-1],createdAt:now});
     const merges=sel.filter(r=>r.match&&r.match.pick&&r.match.pick!=='new');const fresh=sel.filter(r=>!merges.includes(r));
     for(const r of merges){const t=manualById(r.match.pick);if(!t)continue;const u={...t};delete u.id;
-      Object.assign(u,{reconciled:true,bankName:r.merchant,bankAmount:Math.round(r.amount*100)/100,amount:Math.round(r.amount*100)/100,importId:impId,method:t.method||card||'כרטיס אשראי',note:t.note||r.merchant,category:r.category||t.category});
+      Object.assign(u,{reconciled:true,bankName:r.merchant,bankAmount:Math.round(r.amount*100)/100,amount:Math.round(r.amount*100)/100,importId:impId,method:t.method||card||'כרטיס אשראי',note:t.note||r.merchant,category:r.category||t.category});if(r.who)u.who=r.who;
       await a.update(t.id,u)}
-    const list=fresh.map(r=>({type:r.type,amount:Math.round(r.amount*100)/100,category:r.category,date:r.date,note:r.merchant,method:card||'כרטיס אשראי',fixed:!!r.fixed,source:'import',importId:impId,createdAt:now}));
+    const list=fresh.map(r=>({type:r.type,amount:Math.round(r.amount*100)/100,category:r.category,date:r.date,note:r.merchant,method:card||'כרטיס אשראי',fixed:!!r.fixed,source:'import',importId:impId,createdAt:now,...(r.who&&r.type==='expense'?{who:r.who}:{})}));
     await a.addMany(list,d=>impStatus('שומר…',`${d} מתוך ${sel.length}`,Math.round(d/sel.length*100)));
     if(IMP.learn){Object.assign(S.rules,IMP.learn);await a.saveSettings().catch(()=>{})}
-    toast(`${fresh.length} עסקאות נוספו${merges.length?`, ${merges.length} אומתו מול ההזנה שלך`:''}`);{const cnt={};dates.forEach(d=>cnt[mkey(d)]=(cnt[mkey(d)]||0)+1);S.month=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0]}impReset();location.hash='overview'}
+    toast(`${fresh.length} עסקאות נוספו${merges.length?`, ${merges.length} אומתו מול ההזנה שלך`:''}${wu.length?`, ${wu.length} קיבלו שיוך`:''}`);{const cnt={};dates.forEach(d=>cnt[mkey(d)]=(cnt[mkey(d)]||0)+1);S.month=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0][0]}impReset();location.hash='overview'}
   catch(e){impStatus('השמירה נעצרה','חלק מהעסקאות אולי נשמרו. אפשר לבטל את הייבוא מרשימת הייבואים למטה ולנסות שוב.',null)}};
 let undoArm=null;
 function renderImpHist(){const el=$('#impHist');const l=[...S.imports].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
